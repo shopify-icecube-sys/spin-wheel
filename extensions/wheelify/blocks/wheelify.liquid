@@ -18,7 +18,6 @@
   {%- assign form_btn_text = wheel_settings.formButtonText | default: "TRY YOUR LUCK!" -%}
   {%- assign spin_btn_text = wheel_settings.spinButtonText | default: "🎯 Spin to Win!" -%}
   {%- assign form_disclaimer = wheel_settings.formDisclaimer | default: "" -%}
-  {%- assign bg_image = wheel_settings.backgroundImage | default: "" -%}
   {%- assign usage_limit = wheel_settings.discountUsageLimit | default: 1 -%}
   {%- assign custom_cooldown = wheel_settings.customCooldownDays | default: 30 -%}
 {%- endif -%}
@@ -374,6 +373,7 @@
   var appliedMsg = document.getElementById('wheelify-applied-msg');
   var canvas = document.getElementById('wheelify-canvas');
   var ctx = canvas.getContext('2d');
+  var userEmail = '';
 
   // --- Cooldown Logic ---
   var customDays = {{ custom_cooldown | json }};
@@ -452,6 +452,7 @@
     .then(function(res) { return res.json(); })
     .then(function(data) {
       if (data.success) {
+        userEmail = email; // Store for later
         step1.style.display = 'none';
         step2.style.display = 'block';
       } else {
@@ -527,6 +528,7 @@
     couponCode.textContent = 'Generating...';
     var formData = new FormData();
     formData.append('label', winner.label);
+    formData.append('email', userEmail);
     formData.append('usageLimit', {{ usage_limit | json }});
 
     fetch('/apps/wheelify', { method: 'POST', body: formData })

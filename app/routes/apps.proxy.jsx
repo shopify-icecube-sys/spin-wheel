@@ -1,5 +1,6 @@
 import { data } from "react-router";
 import { authenticate } from "../shopify.server";
+import db from "../db.server";
 
 export const loader = async ({ request }) => {
   return data({ message: "Proxy is working" });
@@ -81,6 +82,7 @@ export const action = async ({ request }) => {
 
     // --- Action 2: Generate Unique Discount ---
     const label = formData.get("label") || "10% OFF";
+    const email = formData.get("email") || "Unknown";
     const usageLimit = parseInt(formData.get("usageLimit")) || 1;
     const match = label.match(/(\d+)%/);
     const percentageValue = match ? parseFloat(match[1]) / 100 : 0.1;
@@ -127,6 +129,22 @@ export const action = async ({ request }) => {
     if (userErrors && userErrors.length > 0) {
       console.error("Discount User Errors:", userErrors);
       return data({ error: userErrors[0].message }, { status: 400 });
+    }
+
+    // --- Action 3: Save to Database ---
+    try {
+      await db.lead.create({
+        data: {
+          shop: session.shop,
+          email: email,
+          couponCode: finalCode,
+          prize: label,
+        }
+      });
+      console.log("Lead saved to database successfully.");
+    } catch (dbErr) {
+      console.error("Database Save Error:", dbErr);
+      // We don't return error to user here because the coupon was already created
     }
 
     return data({ code: finalCode });

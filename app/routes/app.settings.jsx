@@ -77,8 +77,6 @@ const DEFAULT_SETTINGS = {
   formButtonText: "TRY YOUR LUCK!",
   spinButtonText: "🎯 Spin to Win!",
   formDisclaimer: "From time to time, we may send you more special offers. You can unsubscribe at any time.",
-  backgroundImage: "https://cdn.shopify.com/s/files/1/0861/2833/2096/files/valentines-bg.png", // Default placeholder
-  requireEmail: true,
   discountUsageLimit: 1,
   customCooldownDays: 30,
 };
@@ -155,45 +153,21 @@ export default function Settings() {
       <div style={{ maxWidth: '720px' }}>
 
         {/* Lead Generation */}
+        {/* Lead Generation (Mandatory) */}
         <div style={cardStyle}>
           <h3 style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', marginTop: 0 }}>Lead Generation</h3>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>Collect customer emails before they can spin the wheel.</p>
-          
-          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', marginBottom: '20px' }}>
-            <input 
-              type="checkbox" 
-              checked={settings.requireEmail} 
-              onChange={(e) => handleChange('requireEmail', e.target.checked)}
-              style={{ width: '20px', height: '20px', accentColor: '#2b8df1' }}
-            />
-            <div>
-              <div style={{ fontWeight: '600', fontSize: '14px' }}>Require Email to Spin</div>
-              <div style={hintStyle}>Creates a new customer in Shopify when they submit the form.</div>
-            </div>
-          </label>
+          <p style={{ color: '#666', fontSize: '14px', marginBottom: '0' }}>Email collection is enabled by default to create Shopify customer records before every spin.</p>
 
-          <div style={{ borderTop: '1px solid #eee', paddingTop: '20px', marginTop: '10px' }}>
+          <div style={{ borderTop: '1px solid #eee', paddingTop: '20px', marginTop: '20px' }}>
             <label style={labelStyle}>Discount Usage Limit</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               min="1"
-              value={settings.discountUsageLimit} 
-              onChange={(e) => handleChange('discountUsageLimit', parseInt(e.target.value) || 1)} 
-              style={{ ...inputStyle, maxWidth: '120px' }} 
+              value={settings.discountUsageLimit}
+              onChange={(e) => handleChange('discountUsageLimit', parseInt(e.target.value) || 1)}
+              style={{ ...inputStyle, maxWidth: '120px' }}
             />
-            <p style={hintStyle}>How many times each generated coupon code can be used in total. (Default: 1)</p>
-          </div>
-        </div>
-
-        {/* Appearance */}
-        <div style={cardStyle}>
-          <h3 style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', marginTop: 0 }}>Appearance</h3>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>Customize the visual theme of the popup.</p>
-          
-          <div>
-            <label style={labelStyle}>Background Image URL</label>
-            <input type="text" value={settings.backgroundImage} onChange={(e) => handleChange('backgroundImage', e.target.value)} style={inputStyle} placeholder="https://..." />
-            <p style={hintStyle}>Provide a URL for the background image of the popup (e.g. from Shopify Files).</p>
+            <p style={hintStyle}>How many times each generated coupon code can be used in total.</p>
           </div>
         </div>
 
@@ -201,15 +175,15 @@ export default function Settings() {
         <div style={cardStyle}>
           <h3 style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', marginTop: 0 }}>Set Days (Spin Interval)</h3>
           <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>Specify how many days a visitor must wait before they can spin the wheel again.</p>
-          
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <input 
-              type="number" 
+            <input
+              type="number"
               min="1"
               step="1"
-              value={settings.customCooldownDays} 
-              onChange={(e) => handleChange('customCooldownDays', parseInt(e.target.value) || 1)} 
-              style={{ ...inputStyle, maxWidth: '100px' }} 
+              value={settings.customCooldownDays}
+              onChange={(e) => handleChange('customCooldownDays', parseInt(e.target.value) || 1)}
+              style={{ ...inputStyle, maxWidth: '100px' }}
             />
             <span style={{ fontSize: '14px', color: '#666', fontWeight: '600' }}>Days</span>
           </div>
@@ -271,11 +245,11 @@ export default function Settings() {
 
             <div>
               <label style={labelStyle}>Disclaimer / Footer Text</label>
-              <textarea 
-                value={settings.formDisclaimer} 
-                onChange={(e) => handleChange('formDisclaimer', e.target.value)} 
-                style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} 
-                placeholder="From time to time..." 
+              <textarea
+                value={settings.formDisclaimer}
+                onChange={(e) => handleChange('formDisclaimer', e.target.value)}
+                style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
+                placeholder="From time to time..."
               />
               <p style={hintStyle}>Small text shown at the bottom of the form.</p>
             </div>

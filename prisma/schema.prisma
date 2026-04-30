@@ -32,3 +32,12 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
+
+model Lead {
+  id          Int      @id @default(autoincrement())
+  shop        String
+  email       String
+  couponCode  String
+  prize       String
+  createdAt   DateTime @default(now())
+}
