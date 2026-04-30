@@ -1,0 +1,552 @@
+{%- assign wheel_settings = app.metafields.wheelify.settings.value -%}
+{%- assign wheel_config = app.metafields.wheelify.config.value -%}
+{%- assign popup_freq = 'once_24h' -%}
+{%- assign popup_pos = 'bottom-right' -%}
+{%- assign trigger_text = 'Spin & Win!' -%}
+{%- assign popup_title = "Valentine's Day Sale!" -%}
+{%- assign popup_subtitle = "Enter your email to get a chance to win a discount!" -%}
+{%- assign form_btn_text = "TRY YOUR LUCK!" -%}
+{%- assign spin_btn_text = "🎯 Spin to Win!" -%}
+{%- assign form_disclaimer = "" -%}
+{%- assign bg_image = "" -%}
+
+{%- if wheel_settings -%}
+  {%- assign popup_freq = wheel_settings.popupFrequency | default: 'once_24h' -%}
+  {%- assign popup_pos = wheel_settings.popupPosition | default: 'bottom-right' -%}
+  {%- assign trigger_text = wheel_settings.triggerText | default: 'Spin & Win!' -%}
+  {%- assign popup_title = wheel_settings.popupTitle | default: "Valentine's Day Sale!" -%}
+  {%- assign popup_subtitle = wheel_settings.popupSubtitle | default: "Enter your email to get a chance to win a discount!" -%}
+  {%- assign form_btn_text = wheel_settings.formButtonText | default: "TRY YOUR LUCK!" -%}
+  {%- assign spin_btn_text = wheel_settings.spinButtonText | default: "🎯 Spin to Win!" -%}
+  {%- assign form_disclaimer = wheel_settings.formDisclaimer | default: "" -%}
+  {%- assign bg_image = wheel_settings.backgroundImage | default: "" -%}
+{%- endif -%}
+
+<div id="wheelify-root">
+  <!-- Floating Trigger Button -->
+  <button id="wheelify-trigger" aria-label="Spin the Wheel">
+    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+      <circle cx="32" cy="32" r="30" stroke="white" stroke-width="4"/>
+      <line x1="32" y1="2" x2="32" y2="62" stroke="white" stroke-width="3"/>
+      <line x1="2" y1="32" x2="62" y2="32" stroke="white" stroke-width="3"/>
+      <line x1="9" y1="9" x2="55" y2="55" stroke="white" stroke-width="3"/>
+      <line x1="55" y1="9" x2="9" y2="55" stroke="white" stroke-width="3"/>
+      <circle cx="32" cy="32" r="8" fill="white"/>
+    </svg>
+    <span>{{ trigger_text }}</span>
+  </button>
+
+  <!-- Popup Overlay -->
+  <div id="wheelify-overlay">
+    <div id="wheelify-popup" style="{% if bg_image != '' %}background-image: url('{{ bg_image }}');{% endif %}">
+      <button id="wheelify-close">✕</button>
+      
+      <div id="wheelify-container">
+        <!-- Left: Wheel Section -->
+        <div id="wheelify-wheel-section">
+          <div id="wheelify-wheel-wrap">
+            <div id="wheelify-pointer"></div>
+            <canvas id="wheelify-canvas" width="360" height="360"></canvas>
+            <div id="wheelify-hub"></div>
+          </div>
+        </div>
+
+        <!-- Right: Content Section -->
+        <div id="wheelify-content-section">
+          <div id="wheelify-content-inner">
+            <h2 id="wheelify-title">{{ popup_title }}</h2>
+            <p id="wheelify-subtitle">{{ popup_subtitle }}</p>
+
+            <!-- Step 1: Lead Gen Form -->
+            <div id="wheelify-step-1">
+              <div class="wheelify-input-group">
+                <input type="email" id="wheelify-email" placeholder="Email" aria-label="Email" required>
+              </div>
+              <button id="wheelify-submit-btn">{{ form_btn_text }}</button>
+              <p id="wheelify-error" style="display:none; color:#ff4d4d; font-size:12px; margin-top:8px; font-weight:600;"></p>
+            </div>
+
+            <!-- Step 2: Spin Action (Hidden initially) -->
+            <div id="wheelify-step-2" style="display:none;">
+              <button id="wheelify-spin-btn">{{ spin_btn_text }}</button>
+            </div>
+
+            <!-- Step 3: Result Panel -->
+            <div id="wheelify-result" style="display:none;">
+              <p id="wheelify-result-msg"></p>
+              <div id="wheelify-coupon-wrap">
+                <span id="wheelify-coupon-code"></span>
+                <button id="wheelify-copy-btn">Copy</button>
+              </div>
+              <p id="wheelify-applied-msg" style="display:none;"></p>
+            </div>
+
+            {%- if form_disclaimer != "" -%}
+              <p id="wheelify-disclaimer">{{ form_disclaimer }}</p>
+            {%- endif -%}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+
+  #wheelify-root {
+    font-family: 'Outfit', sans-serif;
+  }
+
+  #wheelify-trigger {
+    position: fixed;
+    bottom: 24px;
+    {%- if popup_pos == 'bottom-left' -%}left: 24px;{%- else -%}right: 24px;{%- endif -%}
+    z-index: 9998;
+    background: linear-gradient(135deg, #ff4d6d, #c9184a);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(201, 24, 74, 0.4);
+    animation: wheelifyPulse 2s infinite;
+    transition: transform 0.2s;
+  }
+  #wheelify-trigger:hover { transform: translateY(-2px); }
+
+  @keyframes wheelifyPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 8px 24px rgba(201, 24, 74, 0.4); }
+    50% { transform: scale(1.05); box-shadow: 0 12px 32px rgba(201, 24, 74, 0.6); }
+  }
+
+  #wheelify-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    padding: 20px;
+  }
+  #wheelify-overlay.active { display: flex; }
+
+  #wheelify-popup {
+    background: #fff;
+    background-size: cover;
+    background-position: center;
+    border-radius: 32px;
+    width: 100%;
+    max-width: 850px;
+    min-height: 500px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+    display: flex;
+  }
+
+  #wheelify-container {
+    display: flex;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+  }
+
+  #wheelify-wheel-section {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #wheelify-content-section {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    background: rgba(255, 255, 255, 0.85);
+    text-align: center;
+  }
+
+  @media (max-width: 768px) {
+    #wheelify-popup { flex-direction: column; max-width: 400px; max-height: 90vh; overflow-y: auto; }
+    #wheelify-container { flex-direction: column; }
+    #wheelify-wheel-section { padding: 20px; }
+    #wheelify-canvas { width: 280px !important; height: 280px !important; }
+    #wheelify-wheel-wrap { width: 280px !important; height: 280px !important; }
+  }
+
+  #wheelify-close {
+    position: absolute;
+    top: 20px; right: 20px;
+    background: rgba(0,0,0,0.1);
+    border: none;
+    color: #333;
+    font-size: 20px;
+    border-radius: 50%;
+    width: 40px; height: 40px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+    transition: background 0.2s;
+  }
+  #wheelify-close:hover { background: rgba(0,0,0,0.2); }
+
+  #wheelify-title {
+    font-size: 42px;
+    font-weight: 800;
+    margin: 0 0 16px;
+    color: #ff4d6d;
+    line-height: 1.1;
+  }
+
+  #wheelify-subtitle {
+    margin: 0 0 32px;
+    color: #555;
+    font-size: 17px;
+    line-height: 1.5;
+  }
+
+  .wheelify-input-group {
+    margin-bottom: 16px;
+    width: 100%;
+  }
+
+  #wheelify-email {
+    width: 100%;
+    padding: 16px 24px;
+    border: 2px solid #eee;
+    border-radius: 12px;
+    font-size: 16px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  #wheelify-email:focus { border-color: #ff4d6d; }
+
+  #wheelify-submit-btn, #wheelify-spin-btn {
+    width: 100%;
+    background: #ff4d6d;
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 8px 20px rgba(255, 77, 109, 0.3);
+  }
+  #wheelify-submit-btn:hover, #wheelify-spin-btn:hover { background: #c9184a; transform: translateY(-2px); }
+  #wheelify-submit-btn:disabled, #wheelify-spin-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  #wheelify-disclaimer {
+    font-size: 12px;
+    color: #888;
+    margin-top: 24px;
+    line-height: 1.4;
+  }
+
+  #wheelify-wheel-wrap {
+    position: relative;
+    width: 360px; height: 360px;
+  }
+  #wheelify-pointer {
+    position: absolute;
+    top: 50%; right: -15px;
+    transform: translateY(-50%) rotate(90deg);
+    width: 0; height: 0;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-top: 30px solid #fff;
+    z-index: 10;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+  }
+  #wheelify-canvas {
+    border-radius: 50%;
+    border: 12px solid white;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    display: block;
+  }
+  #wheelify-hub {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px; height: 50px;
+    background: white;
+    border-radius: 50%;
+    z-index: 5;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #wheelify-hub::after {
+    content: '★';
+    color: #ff4d6d;
+    font-size: 24px;
+  }
+
+  #wheelify-result {
+    background: #fdf2f4;
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    margin-top: 20px;
+    box-sizing: border-box;
+    border: 2px dashed #ff4d6d;
+  }
+  #wheelify-result-msg { font-size: 18px; font-weight: 700; margin: 0 0 16px; color: #333; }
+  #wheelify-coupon-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+    background: white;
+    border-radius: 12px;
+    padding: 12px 16px;
+    border: 1px solid #eee;
+  }
+  #wheelify-coupon-code { font-size: 20px; font-weight: 800; letter-spacing: 2px; color: #ff4d6d; }
+  #wheelify-copy-btn {
+    background: #ff4d6d;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  #wheelify-applied-msg { margin-top: 12px; font-size: 14px; color: #27ae60; font-weight: 700; }
+</style>
+
+<script>
+(function() {
+  // --- Load Config ---
+  var rawConfig = {{ wheel_config | json }};
+  var slices = Array.isArray(rawConfig) ? rawConfig : [
+    { label: '10% OFF', color: '#ff4d6d', gravity: 10 },
+    { label: '20% OFF', color: '#ff758f', gravity: 10 },
+    { label: '30% OFF', color: '#ff85a1', gravity: 10 },
+    { label: '40% OFF', color: '#ff99ac', gravity: 10 },
+    { label: '50% OFF', color: '#f7cad0', gravity: 10 },
+    { label: '60% OFF', color: '#ff4d6d', gravity: 10 },
+    { label: '70% OFF', color: '#ff758f', gravity: 10 },
+    { label: '80% OFF', color: '#ff85a1', gravity: 10 },
+    { label: '90% OFF', color: '#ff99ac', gravity: 10 },
+    { label: 'NO LUCK', color: '#f7cad0', gravity: 10 }
+  ];
+
+  // --- Elements ---
+  var trigger = document.getElementById('wheelify-trigger');
+  var overlay = document.getElementById('wheelify-overlay');
+  var closeBtn = document.getElementById('wheelify-close');
+  var submitBtn = document.getElementById('wheelify-submit-btn');
+  var spinBtn = document.getElementById('wheelify-spin-btn');
+  var emailInput = document.getElementById('wheelify-email');
+  var errorMsg = document.getElementById('wheelify-error');
+  var step1 = document.getElementById('wheelify-step-1');
+  var step2 = document.getElementById('wheelify-step-2');
+  var resultPanel = document.getElementById('wheelify-result');
+  var resultMsg = document.getElementById('wheelify-result-msg');
+  var couponCode = document.getElementById('wheelify-coupon-code');
+  var copyBtn = document.getElementById('wheelify-copy-btn');
+  var appliedMsg = document.getElementById('wheelify-applied-msg');
+  var canvas = document.getElementById('wheelify-canvas');
+  var ctx = canvas.getContext('2d');
+
+  // --- Cooldown Logic ---
+  var popupFrequency = {{ popup_freq | json }};
+  var storageKey = 'wheelify_spun';
+  var storedValue = localStorage.getItem(storageKey);
+  if (storedValue) {
+    var diff = Date.now() - parseInt(storedValue);
+    if (popupFrequency === 'once_ever' || 
+       (popupFrequency === 'once_24h' && diff < 24 * 60 * 60 * 1000) ||
+       (popupFrequency === 'once_7d' && diff < 7 * 24 * 60 * 60 * 1000)) {
+      trigger.style.display = 'none';
+      return;
+    }
+  }
+
+  // --- Draw Wheel ---
+  var numSlices = slices.length;
+  var sliceAngle = (2 * Math.PI) / numSlices;
+  var currentRotation = 0;
+
+  function drawWheel(rotation) {
+    ctx.clearRect(0, 0, 360, 360);
+    var cx = 180, cy = 180, radius = 175;
+    slices.forEach(function(slice, i) {
+      var startAngle = rotation + i * sliceAngle;
+      var endAngle = startAngle + sliceAngle;
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, radius, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = slice.color;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(startAngle + sliceAngle / 2);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 16px Outfit, sans-serif';
+      ctx.fillText(slice.label, radius - 20, 6);
+      ctx.restore();
+    });
+  }
+
+  drawWheel(currentRotation);
+
+  // --- Step 1: Lead Gen ---
+  submitBtn.addEventListener('click', function() {
+    var email = emailInput.value;
+    if (!email || !email.includes('@')) {
+      errorMsg.textContent = 'Please enter a valid email address.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Processing...';
+    errorMsg.style.display = 'none';
+
+    var formData = new FormData();
+    formData.append('action', 'create_customer');
+    formData.append('email', email);
+
+    fetch('/apps/wheelify', { method: 'POST', body: formData })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.success) {
+        step1.style.display = 'none';
+        step2.style.display = 'block';
+      } else {
+        errorMsg.textContent = data.error || 'Something went wrong. Please try again.';
+        errorMsg.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = {{ form_btn_text | json }};
+      }
+    })
+    .catch(function(err) {
+      console.error(err);
+      errorMsg.textContent = 'Connection error. Please try again.';
+      errorMsg.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.textContent = {{ form_btn_text | json }};
+    });
+  });
+
+  // --- Step 2: Spin ---
+  var isSpinning = false;
+  spinBtn.addEventListener('click', function() {
+    if (isSpinning) return;
+    isSpinning = true;
+    spinBtn.disabled = true;
+
+    // Pick winner index
+    var totalWeight = slices.reduce(function(sum, s) { return sum + (parseFloat(s.gravity) || 1); }, 0);
+    var rand = Math.random() * totalWeight;
+    var cumulative = 0;
+    var winnerIndex = 0;
+    for (var i = 0; i < slices.length; i++) {
+      cumulative += (parseFloat(slices[i].gravity) || 1);
+      if (rand <= cumulative) { winnerIndex = i; break; }
+    }
+
+    var winnerAngle = sliceAngle * winnerIndex;
+    // Pointer is at right (0 rad)
+    var targetAngle = 0 - (winnerAngle + sliceAngle / 2);
+    var extraSpins = (6 + Math.floor(Math.random() * 4)) * 2 * Math.PI;
+    var finalRotation = currentRotation + extraSpins + targetAngle - (currentRotation % (2 * Math.PI));
+
+    var startTime = null;
+    var duration = 5000;
+    var startRot = currentRotation;
+
+    function animate(timestamp) {
+      if (!startTime) startTime = timestamp;
+      var progress = Math.min((timestamp - startTime) / duration, 1);
+      var eased = 1 - Math.pow(1 - progress, 4);
+      currentRotation = startRot + (finalRotation - startRot) * eased;
+      drawWheel(currentRotation);
+      if (progress < 1) requestAnimationFrame(animate);
+      else {
+        isSpinning = false;
+        showResult(winnerIndex);
+      }
+    }
+    requestAnimationFrame(animate);
+  });
+
+  function showResult(winnerIndex) {
+    var winner = slices[winnerIndex];
+    localStorage.setItem(storageKey, Date.now().toString());
+    step2.style.display = 'none';
+    resultPanel.style.display = 'block';
+    resultMsg.textContent = '🎉 ' + (winner.label.toUpperCase() === 'NO LUCK' ? 'Better luck next time!' : 'You won: ' + winner.label + '!');
+    
+    if (winner.label.toUpperCase() === 'NO LUCK') {
+      couponCode.parentElement.style.display = 'none';
+      return;
+    }
+
+    couponCode.textContent = 'Generating...';
+    var formData = new FormData();
+    formData.append('label', winner.label);
+
+    fetch('/apps/wheelify', { method: 'POST', body: formData })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.code) {
+        couponCode.textContent = data.code;
+        appliedMsg.textContent = '✅ Copy the code and use it at checkout!';
+        appliedMsg.style.display = 'block';
+      } else {
+        couponCode.textContent = 'ERROR';
+      }
+    })
+    .catch(function(err) {
+      console.error('Discount generation error:', err);
+      couponCode.textContent = 'ERROR';
+    });
+  }
+
+  copyBtn.addEventListener('click', function() {
+    navigator.clipboard.writeText(couponCode.textContent).then(function() {
+      copyBtn.textContent = 'Copied!';
+      setTimeout(function() { copyBtn.textContent = 'Copy'; }, 2000);
+    });
+  });
+
+  trigger.addEventListener('click', function() { overlay.classList.add('active'); });
+  closeBtn.addEventListener('click', function() { overlay.classList.remove('active'); });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Wheelify",
+  "target": "body",
+  "settings": []
+}
+{% endschema %}
