@@ -495,20 +495,21 @@
     isSpinning = true;
     spinBtn.disabled = true;
 
-    // --- Exaggerated Weighted Logic ---
-    // We cube the gravity to make the high-gravity slice win almost every time
+    // --- Proper Linear Weighted Logic ---
     var totalWeight = slices.reduce(function(sum, s) { 
-        var g = parseFloat(s.gravity) || 1;
-        return sum + Math.pow(g, 3); 
+        return sum + (parseFloat(s.gravity) || 0); 
     }, 0);
+    
+    if (totalWeight <= 0) totalWeight = slices.length; // Fallback
     
     var rand = Math.random() * totalWeight;
     var cumulative = 0;
     var winnerIndex = 0;
     
     for (var i = 0; i < slices.length; i++) {
-      var g = parseFloat(slices[i].gravity) || 1;
-      cumulative += Math.pow(g, 3);
+      var g = parseFloat(slices[i].gravity) || 0;
+      if (totalWeight === slices.length) g = 1; // Fallback
+      cumulative += g;
       if (rand <= cumulative) { 
         winnerIndex = i; 
         break; 
