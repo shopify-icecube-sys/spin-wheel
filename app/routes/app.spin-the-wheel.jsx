@@ -191,7 +191,7 @@ export default function SpinTheWheel() {
                     <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>{String(i + 1).padStart(2, '0')}</span>
                     <span style={{ fontSize: '10px', color: '#999' }}>{slice.type}</span>
                     <span style={{ fontSize: '11px', color: '#27ae60', fontWeight: 'bold', marginTop: '4px' }}>
-                      {((parseInt(slice.gravity) || 0) / (slices.reduce((acc, s) => acc + (parseInt(s.gravity) || 0), 0) || 1) * 100).toFixed(0)}%
+                      {((Math.pow(parseInt(slice.gravity) || 0, 3)) / (slices.reduce((acc, s) => acc + Math.pow(parseInt(s.gravity) || 0, 3), 0) || 1) * 100).toFixed(1)}%
                     </span>
                   </div>
                   

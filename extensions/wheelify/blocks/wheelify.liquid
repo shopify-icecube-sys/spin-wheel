@@ -495,15 +495,27 @@
     isSpinning = true;
     spinBtn.disabled = true;
 
-    // Pick winner index
-    var totalWeight = slices.reduce(function(sum, s) { return sum + (parseFloat(s.gravity) || 1); }, 0);
+    // --- Exaggerated Weighted Logic ---
+    // We cube the gravity to make the high-gravity slice win almost every time
+    var totalWeight = slices.reduce(function(sum, s) { 
+        var g = parseFloat(s.gravity) || 1;
+        return sum + Math.pow(g, 3); 
+    }, 0);
+    
     var rand = Math.random() * totalWeight;
     var cumulative = 0;
     var winnerIndex = 0;
+    
     for (var i = 0; i < slices.length; i++) {
-      cumulative += (parseFloat(slices[i].gravity) || 1);
-      if (rand <= cumulative) { winnerIndex = i; break; }
+      var g = parseFloat(slices[i].gravity) || 1;
+      cumulative += Math.pow(g, 3);
+      if (rand <= cumulative) { 
+        winnerIndex = i; 
+        break; 
+      }
     }
+    
+    console.log("Spin started. Winner Index:", winnerIndex, "Label:", slices[winnerIndex].label);
 
     var winnerAngle = sliceAngle * winnerIndex;
     // Pointer is at the RIGHT (0 rad)
