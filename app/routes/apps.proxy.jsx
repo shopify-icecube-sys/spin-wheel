@@ -10,9 +10,9 @@ export const action = async ({ request }) => {
   try {
     const { admin, session } = await authenticate.public.appProxy(request);
     
-    if (!admin) {
-      console.error("Proxy Error: No admin object returned (Unauthorized)");
-      return data({ error: "Unauthorized access to app proxy" }, { status: 401 });
+    if (!admin || !session) {
+      console.error("Proxy Error: No admin or session object returned");
+      return data({ error: "Unauthorized access to app proxy. Please refresh the page." });
     }
 
     const formData = await request.formData();
@@ -33,19 +33,7 @@ export const action = async ({ request }) => {
         });
 
         if (existingLead) {
-          // Get cooldown settings from app installation metafields
-          const appMeta = await admin.graphql(`
-            query {
-              currentAppInstallation {
-                metafield(namespace: "wheelify", key: "settings") {
-                  value
-                }
-              }
-            }
-          `);
-          const metaJson = await appMeta.json();
-          const settings = JSON.parse(metaJson.data?.currentAppInstallation?.metafield?.value || "{}");
-          const cooldownDays = settings.customCooldownDays || 30;
+          const cooldownDays = parseInt(formData.get("cooldownDays")) || 30;
 
           const diff = Date.now() - new Date(existingLead.createdAt).getTime();
           const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000;
@@ -55,7 +43,7 @@ export const action = async ({ request }) => {
             const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
             return data({ 
               error: `This email has already been used. You can spin again in ${remainingDays} ${remainingDays === 1 ? 'day' : 'days'}.` 
-            }, { status: 400 });
+            });
           }
         }
       } catch (dbErr) {
@@ -63,7 +51,7 @@ export const action = async ({ request }) => {
       }
 
       console.log("Attempting to create customer for email:", email);
-
+      
       const response = await admin.graphql(
         `#graphql
         mutation customerCreate($input: CustomerInput!) {
@@ -91,14 +79,17 @@ export const action = async ({ request }) => {
       
       if (result.errors) {
         console.error("GraphQL Execution Errors:", JSON.stringify(result.errors, null, 2));
-        return data({ error: result.errors[0].message }, { status: 500 });
+        // If it's a permission error, we show a helpful message
+        if (result.errors[0].message.includes("access the Customer object")) {
+           return data({ error: "PERMISSION REQUIRED: Please go to your Shopify Partner Dashboard -> App -> API Access and request access to 'Protected Customer Data' to allow creating customers." });
+        }
+        return data({ error: "Shopify API Error: " + result.errors[0].message });
       }
 
       const userErrors = result.data?.customerCreate?.userErrors;
 
       if (userErrors && userErrors.length > 0) {
         console.log("Customer Creation User Errors:", userErrors);
-        // Extremely permissive check for existing customer
         const isAlreadyExists = userErrors.some(e => 
           e.message.toLowerCase().includes("taken") || 
           e.message.toLowerCase().includes("exists") ||
@@ -110,7 +101,7 @@ export const action = async ({ request }) => {
           console.log("Customer already exists, allowing spin.");
           return data({ success: true, existing: true });
         }
-        return data({ error: userErrors[0].message }, { status: 400 });
+        return data({ error: userErrors[0].message });
       }
 
       console.log("Customer created successfully.");
@@ -159,13 +150,13 @@ export const action = async ({ request }) => {
     const result = await response.json();
     if (result.errors) {
       console.error("Discount Creation Errors:", result.errors);
-      return data({ error: "GraphQL Error: " + result.errors[0].message }, { status: 500 });
+      return data({ error: "GraphQL Error: " + result.errors[0].message });
     }
 
     const userErrors = result.data?.discountCodeBasicCreate?.userErrors;
     if (userErrors && userErrors.length > 0) {
       console.error("Discount User Errors:", userErrors);
-      return data({ error: userErrors[0].message }, { status: 400 });
+      return data({ error: userErrors[0].message });
     }
 
     // --- Action 3: Save to Database ---
@@ -188,6 +179,6 @@ export const action = async ({ request }) => {
 
   } catch (err) {
     console.error("CRITICAL PROXY ERROR:", err);
-    return data({ error: "Internal Server Error: " + err.message }, { status: 500 });
+    return data({ error: "Server Error: " + err.message });
   }
 };

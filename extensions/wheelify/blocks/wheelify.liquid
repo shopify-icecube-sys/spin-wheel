@@ -12,15 +12,15 @@
 {%- assign custom_cooldown = 30 -%}
 
 {%- if wheel_settings -%}
-  {%- assign popup_pos = wheel_settings.popupPosition | default: popup_pos -%}
-  {%- assign trigger_text = wheel_settings.triggerText | default: trigger_text -%}
-  {%- assign popup_title = wheel_settings.popupTitle | default: popup_title -%}
-  {%- assign popup_subtitle = wheel_settings.popupSubtitle | default: popup_subtitle -%}
-  {%- assign form_btn_text = wheel_settings.formButtonText | default: form_btn_text -%}
-  {%- assign spin_btn_text = wheel_settings.spinButtonText | default: spin_btn_text -%}
-  {%- assign form_disclaimer = wheel_settings.formDisclaimer | default: form_disclaimer -%}
-  {%- assign usage_limit = wheel_settings.discountUsageLimit | default: usage_limit -%}
-  {%- assign custom_cooldown = wheel_settings.customCooldownDays | default: custom_cooldown -%}
+  {%- if wheel_settings.popupPosition != nil -%}{%- assign popup_pos = wheel_settings.popupPosition -%}{%- endif -%}
+  {%- if wheel_settings.triggerText != nil -%}{%- assign trigger_text = wheel_settings.triggerText -%}{%- endif -%}
+  {%- if wheel_settings.popupTitle != nil -%}{%- assign popup_title = wheel_settings.popupTitle -%}{%- endif -%}
+  {%- if wheel_settings.popupSubtitle != nil -%}{%- assign popup_subtitle = wheel_settings.popupSubtitle -%}{%- endif -%}
+  {%- if wheel_settings.formButtonText != nil -%}{%- assign form_btn_text = wheel_settings.formButtonText -%}{%- endif -%}
+  {%- if wheel_settings.spinButtonText != nil -%}{%- assign spin_btn_text = wheel_settings.spinButtonText -%}{%- endif -%}
+  {%- if wheel_settings.formDisclaimer != nil -%}{%- assign form_disclaimer = wheel_settings.formDisclaimer -%}{%- endif -%}
+  {%- if wheel_settings.discountUsageLimit != nil -%}{%- assign usage_limit = wheel_settings.discountUsageLimit -%}{%- endif -%}
+  {%- if wheel_settings.customCooldownDays != nil -%}{%- assign custom_cooldown = wheel_settings.customCooldownDays -%}{%- endif -%}
 {%- endif -%}
 
 <div id="wheelify-root">
@@ -34,7 +34,9 @@
       <line x1="55" y1="9" x2="9" y2="55" stroke="white" stroke-width="3"/>
       <circle cx="32" cy="32" r="8" fill="white"/>
     </svg>
-    <span>{{ trigger_text }}</span>
+    {%- if trigger_text != "" -%}
+      <span>{{ trigger_text }}</span>
+    {%- endif -%}
   </button>
 
   <!-- Popup Overlay -->
@@ -55,8 +57,8 @@
         <!-- Right: Content Section -->
         <div id="wheelify-content-section">
           <div id="wheelify-content-inner">
-            <h2 id="wheelify-title">{{ popup_title }}</h2>
-            <p id="wheelify-subtitle">{{ popup_subtitle }}</p>
+            {%- if popup_title != "" -%}<h2 id="wheelify-title">{{ popup_title }}</h2>{%- endif -%}
+            {%- if popup_subtitle != "" -%}<p id="wheelify-subtitle">{{ popup_subtitle }}</p>{%- endif -%}
 
             <!-- Step 1: Lead Gen Form -->
             <div id="wheelify-step-1">
@@ -448,6 +450,7 @@
     var formData = new FormData();
     formData.append('action', 'create_customer');
     formData.append('email', email);
+    formData.append('cooldownDays', {{ custom_cooldown | json }});
 
     fetch('/apps/wheelify', { method: 'POST', body: formData })
     .then(function(res) { return res.json(); })
@@ -541,6 +544,11 @@
         appliedMsg.style.display = 'block';
       } else {
         couponCode.textContent = 'ERROR';
+        if (data.error) {
+           appliedMsg.textContent = '❌ ' + data.error;
+           appliedMsg.style.color = '#ff4d4d';
+           appliedMsg.style.display = 'block';
+        }
       }
     })
     .catch(function(err) {
