@@ -1,6 +1,6 @@
 {%- assign wheel_settings = app.metafields.wheelify.settings.value -%}
 {%- assign wheel_config = app.metafields.wheelify.config.value -%}
-{%- assign popup_freq = 'once_24h' -%}
+
 {%- assign popup_pos = 'bottom-right' -%}
 {%- assign trigger_text = 'Spin & Win!' -%}
 {%- assign popup_title = "Valentine's Day Sale!" -%}
@@ -8,18 +8,19 @@
 {%- assign form_btn_text = "TRY YOUR LUCK!" -%}
 {%- assign spin_btn_text = "🎯 Spin to Win!" -%}
 {%- assign form_disclaimer = "" -%}
-{%- assign bg_image = "" -%}
+{%- assign usage_limit = 1 -%}
+{%- assign custom_cooldown = 30 -%}
 
 {%- if wheel_settings -%}
-  {%- assign popup_pos = wheel_settings.popupPosition | default: 'bottom-right' -%}
-  {%- assign trigger_text = wheel_settings.triggerText | default: 'Spin & Win!' -%}
-  {%- assign popup_title = wheel_settings.popupTitle | default: "Valentine's Day Sale!" -%}
-  {%- assign popup_subtitle = wheel_settings.popupSubtitle | default: "Enter your email to get a chance to win a discount!" -%}
-  {%- assign form_btn_text = wheel_settings.formButtonText | default: "TRY YOUR LUCK!" -%}
-  {%- assign spin_btn_text = wheel_settings.spinButtonText | default: "🎯 Spin to Win!" -%}
-  {%- assign form_disclaimer = wheel_settings.formDisclaimer | default: "" -%}
-  {%- assign usage_limit = wheel_settings.discountUsageLimit | default: 1 -%}
-  {%- assign custom_cooldown = wheel_settings.customCooldownDays | default: 30 -%}
+  {%- assign popup_pos = wheel_settings.popupPosition | default: popup_pos -%}
+  {%- assign trigger_text = wheel_settings.triggerText | default: trigger_text -%}
+  {%- assign popup_title = wheel_settings.popupTitle | default: popup_title -%}
+  {%- assign popup_subtitle = wheel_settings.popupSubtitle | default: popup_subtitle -%}
+  {%- assign form_btn_text = wheel_settings.formButtonText | default: form_btn_text -%}
+  {%- assign spin_btn_text = wheel_settings.spinButtonText | default: spin_btn_text -%}
+  {%- assign form_disclaimer = wheel_settings.formDisclaimer | default: form_disclaimer -%}
+  {%- assign usage_limit = wheel_settings.discountUsageLimit | default: usage_limit -%}
+  {%- assign custom_cooldown = wheel_settings.customCooldownDays | default: custom_cooldown -%}
 {%- endif -%}
 
 <div id="wheelify-root">
@@ -38,7 +39,7 @@
 
   <!-- Popup Overlay -->
   <div id="wheelify-overlay">
-    <div id="wheelify-popup" style="{% if bg_image != '' %}background-image: url('{{ bg_image }}');{% endif %}">
+    <div id="wheelify-popup">
       <button id="wheelify-close">✕</button>
       
       <div id="wheelify-container">
