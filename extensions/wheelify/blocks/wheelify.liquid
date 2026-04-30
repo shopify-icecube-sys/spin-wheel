@@ -11,7 +11,6 @@
 {%- assign bg_image = "" -%}
 
 {%- if wheel_settings -%}
-  {%- assign popup_freq = wheel_settings.popupFrequency | default: 'once_24h' -%}
   {%- assign popup_pos = wheel_settings.popupPosition | default: 'bottom-right' -%}
   {%- assign trigger_text = wheel_settings.triggerText | default: 'Spin & Win!' -%}
   {%- assign popup_title = wheel_settings.popupTitle | default: "Valentine's Day Sale!" -%}
@@ -20,6 +19,8 @@
   {%- assign spin_btn_text = wheel_settings.spinButtonText | default: "🎯 Spin to Win!" -%}
   {%- assign form_disclaimer = wheel_settings.formDisclaimer | default: "" -%}
   {%- assign bg_image = wheel_settings.backgroundImage | default: "" -%}
+  {%- assign usage_limit = wheel_settings.discountUsageLimit | default: 1 -%}
+  {%- assign custom_cooldown = wheel_settings.customCooldownDays | default: 30 -%}
 {%- endif -%}
 
 <div id="wheelify-root">
@@ -79,6 +80,12 @@
                 <button id="wheelify-copy-btn">Copy</button>
               </div>
               <p id="wheelify-applied-msg" style="display:none;"></p>
+            </div>
+
+            <!-- Step 4: Cooldown Warning -->
+            <div id="wheelify-cooldown" style="display:none;">
+              <div style="font-size: 50px; margin-bottom: 15px;">⏳</div>
+              <p id="wheelify-cooldown-msg" style="color: #ff4d6d; font-weight: 800; font-size: 20px; line-height: 1.4;"></p>
             </div>
 
             {%- if form_disclaimer != "" -%}
@@ -369,17 +376,24 @@
   var ctx = canvas.getContext('2d');
 
   // --- Cooldown Logic ---
-  var popupFrequency = {{ popup_freq | json }};
+  var customDays = {{ custom_cooldown | json }};
   var storageKey = 'wheelify_spun';
-  var storedValue = localStorage.getItem(storageKey);
-  if (storedValue) {
+  var cooldownPanel = document.getElementById('wheelify-cooldown');
+  var cooldownMsg = document.getElementById('wheelify-cooldown-msg');
+
+  function checkCooldown() {
+    var storedValue = localStorage.getItem(storageKey);
+    if (!storedValue) return false;
+    
     var diff = Date.now() - parseInt(storedValue);
-    if (popupFrequency === 'once_ever' || 
-       (popupFrequency === 'once_24h' && diff < 24 * 60 * 60 * 1000) ||
-       (popupFrequency === 'once_7d' && diff < 7 * 24 * 60 * 60 * 1000)) {
-      trigger.style.display = 'none';
-      return;
+    var cooldownMs = customDays * 24 * 60 * 60 * 1000;
+    
+    if (diff < cooldownMs) {
+      var remainingMs = cooldownMs - diff;
+      var remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+      return remainingDays;
     }
+    return false;
   }
 
   // --- Draw Wheel ---
@@ -513,6 +527,7 @@
     couponCode.textContent = 'Generating...';
     var formData = new FormData();
     formData.append('label', winner.label);
+    formData.append('usageLimit', {{ usage_limit | json }});
 
     fetch('/apps/wheelify', { method: 'POST', body: formData })
     .then(function(res) { return res.json(); })
@@ -538,7 +553,21 @@
     });
   });
 
-  trigger.addEventListener('click', function() { overlay.classList.add('active'); });
+  trigger.addEventListener('click', function() { 
+    var remainingDays = checkCooldown();
+    if (remainingDays) {
+      step1.style.display = 'none';
+      step2.style.display = 'none';
+      resultPanel.style.display = 'none';
+      cooldownPanel.style.display = 'block';
+      cooldownMsg.textContent = 'Wait! You can spin the wheel again after ' + remainingDays + (remainingDays === 1 ? ' day.' : ' days.');
+    } else {
+      cooldownPanel.style.display = 'none';
+      // Normal logic: show step 1 or 2
+      step1.style.display = 'block';
+    }
+    overlay.classList.add('active'); 
+  });
   closeBtn.addEventListener('click', function() { overlay.classList.remove('active'); });
 })();
 </script>

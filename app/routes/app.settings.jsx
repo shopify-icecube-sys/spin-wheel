@@ -34,7 +34,7 @@ export const action = async ({ request }) => {
     const appInstJson = await appInstResponse.json();
     const appInstallationId = appInstJson.data.currentAppInstallation.id;
 
-    await admin.graphql(
+    const saveResponse = await admin.graphql(
       `#graphql
         mutation SaveSettings($metafieldsSetInput: [MetafieldsSetInput!]!) {
           metafieldsSet(metafields: $metafieldsSetInput) {
@@ -54,6 +54,14 @@ export const action = async ({ request }) => {
         }
       }
     );
+    const saveJson = await saveResponse.json();
+    const userErrors = saveJson.data?.metafieldsSet?.userErrors;
+
+    if (userErrors && userErrors.length > 0) {
+      console.error("Metafield Save Errors:", userErrors);
+      return { success: false, error: userErrors[0].message };
+    }
+
     return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
@@ -71,6 +79,8 @@ const DEFAULT_SETTINGS = {
   formDisclaimer: "From time to time, we may send you more special offers. You can unsubscribe at any time.",
   backgroundImage: "https://cdn.shopify.com/s/files/1/0861/2833/2096/files/valentines-bg.png", // Default placeholder
   requireEmail: true,
+  discountUsageLimit: 1,
+  customCooldownDays: 30,
 };
 
 export default function Settings() {
@@ -80,7 +90,10 @@ export default function Settings() {
   const navigation = useNavigation();
   const isSaving = navigation.state === "submitting";
 
-  const [settings, setSettings] = useState(savedSettings || DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState({
+    ...DEFAULT_SETTINGS,
+    ...(savedSettings || {})
+  });
   const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
@@ -130,6 +143,15 @@ export default function Settings() {
         </div>
       )}
 
+      {actionData?.error && (
+        <div style={{ backgroundColor: '#fbeae5', color: '#8b0000', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500' }}>
+          <svg viewBox="0 0 20 20" style={{ width: '20px', height: '20px', fill: 'currentColor' }}>
+            <path fillRule="evenodd" d="M10 20a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm-1-5a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm0-7a1 1 0 0 1 2 0v4a1 1 0 0 1-2 0V8z" />
+          </svg>
+          Error: {actionData.error}
+        </div>
+      )}
+
       <div style={{ maxWidth: '720px' }}>
 
         {/* Lead Generation */}
@@ -137,7 +159,7 @@ export default function Settings() {
           <h3 style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', marginTop: 0 }}>Lead Generation</h3>
           <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>Collect customer emails before they can spin the wheel.</p>
           
-          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', marginBottom: '20px' }}>
             <input 
               type="checkbox" 
               checked={settings.requireEmail} 
@@ -149,6 +171,18 @@ export default function Settings() {
               <div style={hintStyle}>Creates a new customer in Shopify when they submit the form.</div>
             </div>
           </label>
+
+          <div style={{ borderTop: '1px solid #eee', paddingTop: '20px', marginTop: '10px' }}>
+            <label style={labelStyle}>Discount Usage Limit</label>
+            <input 
+              type="number" 
+              min="1"
+              value={settings.discountUsageLimit} 
+              onChange={(e) => handleChange('discountUsageLimit', parseInt(e.target.value) || 1)} 
+              style={{ ...inputStyle, maxWidth: '120px' }} 
+            />
+            <p style={hintStyle}>How many times each generated coupon code can be used in total. (Default: 1)</p>
+          </div>
         </div>
 
         {/* Appearance */}
@@ -163,25 +197,23 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Popup Frequency */}
+        {/* Spin Interval (Set Days) */}
         <div style={cardStyle}>
-          <h3 style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', marginTop: 0 }}>Popup Display Frequency</h3>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>Control how often the Spin the Wheel popup appears to each visitor.</p>
-
-          {[
-            { value: 'always', label: 'Always Show', hint: 'Popup appears on every page load. Good for testing.' },
-            { value: 'once_24h', label: 'Once per 24 hours', hint: 'The most common setting. Visitor can spin again after 24 hours.' },
-            { value: 'once_7d', label: 'Once per 7 days', hint: 'Popup appears once a week per visitor.' },
-            { value: 'once_ever', label: 'Once per visitor (ever)', hint: 'Visitor can only spin the wheel one time ever from their browser.' },
-          ].map(opt => (
-            <label key={opt.value} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', borderRadius: '8px', border: `2px solid ${settings.popupFrequency === opt.value ? '#2b8df1' : '#e1e3e5'}`, marginBottom: '10px', cursor: 'pointer', backgroundColor: settings.popupFrequency === opt.value ? '#f0f7ff' : '#fff' }}>
-              <input type="radio" name="popupFrequency" value={opt.value} checked={settings.popupFrequency === opt.value} onChange={() => handleChange('popupFrequency', opt.value)} style={{ marginTop: '2px', accentColor: '#2b8df1' }} />
-              <div>
-                <div style={{ fontWeight: '600', fontSize: '14px' }}>{opt.label}</div>
-                <div style={hintStyle}>{opt.hint}</div>
-              </div>
-            </label>
-          ))}
+          <h3 style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', marginTop: 0 }}>Set Days (Spin Interval)</h3>
+          <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>Specify how many days a visitor must wait before they can spin the wheel again.</p>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <input 
+              type="number" 
+              min="1"
+              step="1"
+              value={settings.customCooldownDays} 
+              onChange={(e) => handleChange('customCooldownDays', parseInt(e.target.value) || 1)} 
+              style={{ ...inputStyle, maxWidth: '100px' }} 
+            />
+            <span style={{ fontSize: '14px', color: '#666', fontWeight: '600' }}>Days</span>
+          </div>
+          <p style={hintStyle}>Visitors will see a warning message in the popup if they try to spin before this period ends.</p>
         </div>
 
         {/* Popup Position */}

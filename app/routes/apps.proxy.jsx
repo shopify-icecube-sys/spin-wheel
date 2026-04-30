@@ -81,6 +81,7 @@ export const action = async ({ request }) => {
 
     // --- Action 2: Generate Unique Discount ---
     const label = formData.get("label") || "10% OFF";
+    const usageLimit = parseInt(formData.get("usageLimit")) || 1;
     const match = label.match(/(\d+)%/);
     const percentageValue = match ? parseFloat(match[1]) / 100 : 0.1;
     
@@ -109,7 +110,8 @@ export const action = async ({ request }) => {
             customerGets: {
               value: { percentage: percentageValue },
               items: { all: true }
-            }
+            },
+            usageLimit: usageLimit
           }
         }
       }
