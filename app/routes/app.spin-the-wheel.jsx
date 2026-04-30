@@ -187,9 +187,12 @@ export default function SpinTheWheel() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
               {slices.map((slice, i) => (
                 <div key={i} style={{ border: '1px solid #e1e3e5', borderRadius: '8px', padding: '16px', display: 'flex', gap: '16px', alignItems: 'flex-start', backgroundColor: '#fff' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '40px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '60px' }}>
                     <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>{String(i + 1).padStart(2, '0')}</span>
                     <span style={{ fontSize: '10px', color: '#999' }}>{slice.type}</span>
+                    <span style={{ fontSize: '11px', color: '#27ae60', fontWeight: 'bold', marginTop: '4px' }}>
+                      {((parseInt(slice.gravity) || 0) / (slices.reduce((acc, s) => acc + (parseInt(s.gravity) || 0), 0) || 1) * 100).toFixed(0)}%
+                    </span>
                   </div>
                   
                   <div style={{ flex: 1, display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
@@ -225,6 +228,17 @@ export default function SpinTheWheel() {
                   </div>
                 </div>
               ))}
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', marginTop: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e1e3e5' }}>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', color: slices.reduce((acc, s) => acc + (parseInt(s.gravity) || 0), 0) === 100 ? '#27ae60' : '#e74c3c' }}>
+                Total Gravity: {slices.reduce((acc, s) => acc + (parseInt(s.gravity) || 0), 0)}%
+              </div>
+              {slices.reduce((acc, s) => acc + (parseInt(s.gravity) || 0), 0) !== 100 && (
+                <p style={{ margin: 0, fontSize: '13px', color: '#e74c3c', fontWeight: '500' }}>
+                  ⚠️ Warning: Total gravity must be exactly 100% for the best winning logic.
+                </p>
+              )}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '32px' }}>

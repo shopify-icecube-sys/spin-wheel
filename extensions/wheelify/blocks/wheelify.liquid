@@ -10,6 +10,7 @@
 {%- assign form_disclaimer = "" -%}
 {%- assign usage_limit = 1 -%}
 {%- assign custom_cooldown = 30 -%}
+{%- assign colors = "#ff4d6d,#ff758f,#ff85a1,#ff99ac,#f7cad0,#ff4d6d,#ff758f,#ff85a1,#ff99ac,#f7cad0" | split: "," -%}
 
 {%- if wheel_settings -%}
   {%- if wheel_settings.popupPosition != nil -%}{%- assign popup_pos = wheel_settings.popupPosition -%}{%- endif -%}
@@ -345,18 +346,30 @@
 <script>
 (function() {
   // --- Load Config ---
-  var rawConfig = {{ wheel_config | json }};
-  var slices = Array.isArray(rawConfig) ? rawConfig : [
-    { label: '10% OFF', color: '#ff4d6d', gravity: 10 },
-    { label: '20% OFF', color: '#ff758f', gravity: 10 },
-    { label: '30% OFF', color: '#ff85a1', gravity: 10 },
-    { label: '40% OFF', color: '#ff99ac', gravity: 10 },
-    { label: '50% OFF', color: '#f7cad0', gravity: 10 },
-    { label: '60% OFF', color: '#ff4d6d', gravity: 10 },
-    { label: '70% OFF', color: '#ff758f', gravity: 10 },
-    { label: '80% OFF', color: '#ff85a1', gravity: 10 },
-    { label: '90% OFF', color: '#ff99ac', gravity: 10 },
-    { label: 'NO LUCK', color: '#f7cad0', gravity: 10 }
+  // --- Load Config ---
+  var slices = [
+    {%- if wheel_config -%}
+      {%- for slice in wheel_config -%}
+        { 
+          label: {{ slice.label | json }}, 
+          winText: {{ slice.winText | json }}, 
+          coupon: {{ slice.coupon | json }}, 
+          gravity: {{ slice.gravity | default: 10 }}, 
+          color: {{ slice.color | default: "#ff4d6d" | json }} 
+        }{%- unless forloop.last -%},{%- endunless -%}
+      {%- endfor -%}
+    {%- else -%}
+      { label: '10% OFF', gravity: 40, color: '#ff4d6d' },
+      { label: '20% OFF', gravity: 20, color: '#ff758f' },
+      { label: '30% OFF', gravity: 15, color: '#ff85a1' },
+      { label: '40% OFF', gravity: 10, color: '#ff99ac' },
+      { label: '50% OFF', gravity: 5, color: '#f7cad0' },
+      { label: '60% OFF', gravity: 4, color: '#ff4d6d' },
+      { label: '70% OFF', gravity: 3, color: '#ff758f' },
+      { label: '80% OFF', gravity: 1, color: '#ff85a1' },
+      { label: '90% OFF', gravity: 1, color: '#ff99ac' },
+      { label: '100% OFF', gravity: 1, color: '#f7cad0' }
+    {%- endif -%}
   ];
 
   // --- Elements ---
@@ -493,10 +506,10 @@
     }
 
     var winnerAngle = sliceAngle * winnerIndex;
-    // Pointer is at right (0 rad)
+    // Pointer is at the RIGHT (0 rad)
     var targetAngle = 0 - (winnerAngle + sliceAngle / 2);
     var extraSpins = (6 + Math.floor(Math.random() * 4)) * 2 * Math.PI;
-    var finalRotation = currentRotation + extraSpins + targetAngle - (currentRotation % (2 * Math.PI));
+    var finalRotation = currentRotation + extraSpins + (targetAngle - (currentRotation % (2 * Math.PI)));
 
     var startTime = null;
     var duration = 5000;
