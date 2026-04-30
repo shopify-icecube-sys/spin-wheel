@@ -25,6 +25,43 @@ export const action = async ({ request }) => {
       const email = formData.get("email");
       if (!email) return data({ error: "Email is required" }, { status: 400 });
 
+      // --- Action 1a: Check Server-Side Cooldown (Database) ---
+      try {
+        const existingLead = await db.lead.findFirst({
+          where: { email, shop: session.shop },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        if (existingLead) {
+          // Get cooldown settings from app installation metafields
+          const appMeta = await admin.graphql(`
+            query {
+              currentAppInstallation {
+                metafield(namespace: "wheelify", key: "settings") {
+                  value
+                }
+              }
+            }
+          `);
+          const metaJson = await appMeta.json();
+          const settings = JSON.parse(metaJson.data?.currentAppInstallation?.metafield?.value || "{}");
+          const cooldownDays = settings.customCooldownDays || 30;
+
+          const diff = Date.now() - new Date(existingLead.createdAt).getTime();
+          const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000;
+
+          if (diff < cooldownMs) {
+            const remainingMs = cooldownMs - diff;
+            const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+            return data({ 
+              error: `This email has already been used. You can spin again in ${remainingDays} ${remainingDays === 1 ? 'day' : 'days'}.` 
+            }, { status: 400 });
+          }
+        }
+      } catch (dbErr) {
+        console.error("Database Cooldown Check Error:", dbErr);
+      }
+
       console.log("Attempting to create customer for email:", email);
 
       const response = await admin.graphql(
