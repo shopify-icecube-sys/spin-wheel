@@ -6,7 +6,7 @@ import WheelPreview from "../components/WheelPreview";
 
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
-  
+
   try {
     const response = await admin.graphql(`
       query {
@@ -19,14 +19,14 @@ export const loader = async ({ request }) => {
     `);
     const json = await response.json();
     const savedConfigStr = json.data?.currentAppInstallation?.metafield?.value;
-    
+
     if (savedConfigStr) {
       return { savedSlices: JSON.parse(savedConfigStr) };
     }
   } catch (error) {
     console.error("Failed to load metafield config:", error);
   }
-  
+
   return { savedSlices: null };
 };
 
@@ -34,11 +34,11 @@ export const action = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const slicesJson = formData.get("slices");
-  
+
   if (!slicesJson) return { success: false };
-  
+
   const slices = JSON.parse(slicesJson);
-  
+
   try {
     // 1. Get App Installation ID for Metafields
     const appInstResponse = await admin.graphql(`
@@ -113,7 +113,7 @@ export const action = async ({ request }) => {
         );
       }
     }
-    
+
     return { success: true };
   } catch (error) {
     console.error("Failed to save settings or create coupons:", error);
@@ -139,7 +139,7 @@ export default function SpinTheWheel() {
   const submit = useSubmit();
   const actionData = useActionData();
   const navigation = useNavigation();
-  
+
   const [slices, setSlices] = useState(savedSlices || DEFAULT_SLICES);
   const [showToast, setShowToast] = useState(false);
 
@@ -175,15 +175,15 @@ export default function SpinTheWheel() {
       )}
 
       <div style={{ display: 'flex', gap: '40px', padding: '0 20px', alignItems: 'flex-start' }}>
-        
+
         {/* Settings Form (Left Side - Scrollable) */}
         <div style={{ flex: '1', maxWidth: '800px' }}>
           <p style={{ color: '#666', marginBottom: '24px' }}>Boost sales with engaging spin wheel themes for festivals and special events.</p>
-          
+
           <div style={{ marginBottom: '32px' }}>
             <h3 style={{ fontWeight: 'bold', marginBottom: '12px' }}>Slice customizations</h3>
             <p style={{ color: '#666', marginBottom: '16px', fontSize: '14px' }}>Customize the experience by adjusting text, coupons, colors, probabilities, and alignment for all slices.</p>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
               {slices.map((slice, i) => (
                 <div key={i} style={{ border: '1px solid #e1e3e5', borderRadius: '8px', padding: '16px', display: 'flex', gap: '16px', alignItems: 'flex-start', backgroundColor: '#fff' }}>
@@ -194,13 +194,13 @@ export default function SpinTheWheel() {
                       {((parseInt(slice.gravity) || 0) / (slices.reduce((acc, s) => acc + (parseInt(s.gravity) || 0), 0) || 1) * 100).toFixed(1)}%
                     </span>
                   </div>
-                  
+
                   <div style={{ flex: 1, display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1', minWidth: '120px' }}>
                       <label style={{ fontSize: '12px' }}>Label</label>
                       <input type="text" value={slice.label} onChange={(e) => handleSliceChange(i, 'label', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
                     </div>
-                    
+
                     {slice.type === 'Win' && (
                       <>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1', minWidth: '120px' }}>
@@ -217,7 +217,7 @@ export default function SpinTheWheel() {
                         </div>
                       </>
                     )}
-                    
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100px' }}>
                       <label style={{ fontSize: '12px' }}>Slice color</label>
                       <div style={{ display: 'flex', border: '1px solid #c9cccf', borderRadius: '4px', padding: '4px', alignItems: 'center', gap: '8px' }}>
@@ -229,7 +229,7 @@ export default function SpinTheWheel() {
                 </div>
               ))}
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', marginTop: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e1e3e5' }}>
               <div style={{ fontSize: '16px', fontWeight: 'bold', color: slices.reduce((acc, s) => acc + (parseInt(s.gravity) || 0), 0) === 100 ? '#27ae60' : '#e74c3c' }}>
                 Total Gravity: {slices.reduce((acc, s) => acc + (parseInt(s.gravity) || 0), 0)}%
