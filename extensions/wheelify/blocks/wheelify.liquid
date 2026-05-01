@@ -392,6 +392,7 @@
   var canvas = document.getElementById('wheelify-canvas');
   var ctx = canvas.getContext('2d');
   var userEmail = '';
+  var currentCustomerId = '';
 
   // --- Cooldown Logic ---
   var customDays = {{ custom_cooldown | json }};
@@ -471,7 +472,8 @@
     .then(function(res) { return res.json(); })
     .then(function(data) {
       if (data.success) {
-        userEmail = email; // Store for later
+        userEmail = email;
+        currentCustomerId = data.customerId || '';
         step1.style.display = 'none';
         step2.style.display = 'block';
       } else {
@@ -561,6 +563,7 @@
     var formData = new FormData();
     formData.append('label', winner.label);
     formData.append('email', userEmail);
+    formData.append('customerId', currentCustomerId);
     formData.append('usageLimit', {{ usage_limit | json }});
     formData.append('expiryMinutes', {{ expiry_minutes | json }});
 

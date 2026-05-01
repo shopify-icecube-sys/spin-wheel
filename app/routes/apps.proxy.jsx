@@ -79,38 +79,48 @@ export const action = async ({ request }) => {
       
       if (result.errors) {
         console.error("GraphQL Execution Errors:", JSON.stringify(result.errors, null, 2));
-        // If it's a permission error, we show a helpful message
         if (result.errors[0].message.includes("access the Customer object")) {
-           return data({ error: "PERMISSION REQUIRED: Please go to your Shopify Partner Dashboard -> App -> API Access and request access to 'Protected Customer Data' to allow creating customers." });
+           return data({ error: "PERMISSION REQUIRED: Please go to your Shopify Partner Dashboard -> App -> API Access and request access to 'Protected Customer Data'." });
         }
         return data({ error: "Shopify API Error: " + result.errors[0].message });
       }
 
+      const customer = result.data?.customerCreate?.customer;
       const userErrors = result.data?.customerCreate?.userErrors;
 
       if (userErrors && userErrors.length > 0) {
-        console.log("Customer Creation User Errors:", userErrors);
         const isAlreadyExists = userErrors.some(e => 
           e.message.toLowerCase().includes("taken") || 
           e.message.toLowerCase().includes("exists") ||
-          e.message.toLowerCase().includes("already") ||
-          (e.field && e.field.includes("email"))
+          e.message.toLowerCase().includes("already")
         );
         
         if (isAlreadyExists) {
-          console.log("Customer already exists, allowing spin.");
-          return data({ success: true, existing: true });
+          // Fetch the existing customer ID
+          const searchRes = await admin.graphql(
+            `#graphql
+            query($query: String!) {
+              customers(first: 1, query: $query) {
+                nodes { id }
+              }
+            }
+            `,
+            { variables: { query: `email:${email}` } }
+          );
+          const searchData = await searchRes.json();
+          const existingId = searchData.data?.customers?.nodes[0]?.id;
+          return data({ success: true, existing: true, customerId: existingId });
         }
         return data({ error: userErrors[0].message });
       }
 
-      console.log("Customer created successfully.");
-      return data({ success: true });
+      return data({ success: true, customerId: customer?.id });
     }
 
     // --- Action 2: Generate Unique Discount ---
     const label = formData.get("label") || "10% OFF";
     const email = formData.get("email") || "Unknown";
+    const customerId = formData.get("customerId");
     const usageLimit = parseInt(formData.get("usageLimit")) || 1;
     const expiryMinutes = parseInt(formData.get("expiryMinutes")) || 0;
     const match = label.match(/(\d+)%/);
@@ -132,6 +142,12 @@ export const action = async ({ request }) => {
       },
       usageLimit: usageLimit
     };
+
+    if (customerId) {
+       discountInput.customerSelection = {
+         customers: { add: [customerId] }
+       };
+    }
 
     if (expiryMinutes > 0) {
       discountInput.endsAt = new Date(Date.now() + expiryMinutes * 60000).toISOString();
