@@ -10,7 +10,8 @@
 {%- assign form_disclaimer = "" -%}
 {%- assign usage_limit = 1 -%}
 {%- assign custom_cooldown = 30 -%}
-{%- assign colors = "#ff4d6d,#ff758f,#ff85a1,#ff99ac,#f7cad0,#ff4d6d,#ff758f,#ff85a1,#ff99ac,#f7cad0" | split: "," -%}
+{%- assign expiry_minutes = 60 -%}
+
 
 {%- if wheel_settings -%}
   {%- if wheel_settings.popupPosition != nil -%}{%- assign popup_pos = wheel_settings.popupPosition -%}{%- endif -%}
@@ -22,6 +23,7 @@
   {%- if wheel_settings.formDisclaimer != nil -%}{%- assign form_disclaimer = wheel_settings.formDisclaimer -%}{%- endif -%}
   {%- if wheel_settings.discountUsageLimit != nil -%}{%- assign usage_limit = wheel_settings.discountUsageLimit -%}{%- endif -%}
   {%- if wheel_settings.customCooldownDays != nil -%}{%- assign custom_cooldown = wheel_settings.customCooldownDays -%}{%- endif -%}
+  {%- if wheel_settings.couponExpiryMinutes != nil -%}{%- assign expiry_minutes = wheel_settings.couponExpiryMinutes -%}{%- endif -%}
 {%- endif -%}
 
 <div id="wheelify-root">
@@ -560,13 +562,18 @@
     formData.append('label', winner.label);
     formData.append('email', userEmail);
     formData.append('usageLimit', {{ usage_limit | json }});
+    formData.append('expiryMinutes', {{ expiry_minutes | json }});
 
     fetch('/apps/wheelify', { method: 'POST', body: formData })
     .then(function(res) { return res.json(); })
     .then(function(data) {
       if (data.code) {
         couponCode.textContent = data.code;
-        appliedMsg.textContent = '✅ Copy the code and use it at checkout!';
+        var msg = '✅ Copy the code and use it at checkout!';
+        {% if expiry_minutes > 0 %}
+          msg += ' <br><span style="font-size: 12px; opacity: 0.8;">Note: This code expires in {{ expiry_minutes }} minutes.</span>';
+        {% endif %}
+        appliedMsg.innerHTML = msg;
         appliedMsg.style.display = 'block';
       } else {
         couponCode.textContent = 'ERROR';

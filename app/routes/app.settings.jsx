@@ -75,10 +75,11 @@ const DEFAULT_SETTINGS = {
   popupTitle: "Valentine's Day Sale!",
   popupSubtitle: "Enter your email to get a chance to win a discount!",
   formButtonText: "TRY YOUR LUCK!",
-  spinButtonText: "🎯 Spin to Win!",
+  spinButtonText: " Spin to Win!",
   formDisclaimer: "From time to time, we may send you more special offers. You can unsubscribe at any time.",
   discountUsageLimit: 1,
   customCooldownDays: 30,
+  couponExpiryMinutes: 60,
 };
 
 export default function Settings() {
@@ -168,6 +169,18 @@ export default function Settings() {
               style={{ ...inputStyle, maxWidth: '120px' }}
             />
             <p style={hintStyle}>How many times each generated coupon code can be used in total.</p>
+          </div>
+
+          <div style={{ borderTop: '1px solid #eee', paddingTop: '20px', marginTop: '20px' }}>
+            <label style={labelStyle}>Coupon Expiry (Minutes)</label>
+            <input
+              type="number"
+              min="0"
+              value={settings.couponExpiryMinutes}
+              onChange={(e) => handleChange('couponExpiryMinutes', parseInt(e.target.value) || 0)}
+              style={{ ...inputStyle, maxWidth: '120px' }}
+            />
+            <p style={hintStyle}>How many minutes the discount code remains valid after generation. Set to 0 for no expiry.</p>
           </div>
         </div>
 

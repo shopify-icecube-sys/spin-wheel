@@ -112,6 +112,7 @@ export const action = async ({ request }) => {
     const label = formData.get("label") || "10% OFF";
     const email = formData.get("email") || "Unknown";
     const usageLimit = parseInt(formData.get("usageLimit")) || 1;
+    const expiryMinutes = parseInt(formData.get("expiryMinutes")) || 0;
     const match = label.match(/(\d+)%/);
     const percentageValue = match ? parseFloat(match[1]) / 100 : 0.1;
     
@@ -119,7 +120,24 @@ export const action = async ({ request }) => {
     const cleanValue = label.replace(/[^0-9]/g, "");
     const finalCode = `${cleanValue}PERCENT-${uniqueId}`;
 
-    console.log("Generating discount for label:", label, "code:", finalCode);
+    const discountInput = {
+      title: `Spin Win ${finalCode}`,
+      code: finalCode,
+      startsAt: new Date().toISOString(),
+      customerSelection: { all: true },
+      appliesOncePerCustomer: true,
+      customerGets: {
+        value: { percentage: percentageValue },
+        items: { all: true }
+      },
+      usageLimit: usageLimit
+    };
+
+    if (expiryMinutes > 0) {
+      discountInput.endsAt = new Date(Date.now() + expiryMinutes * 60000).toISOString();
+    }
+
+    console.log("Generating discount for label:", label, "code:", finalCode, "expires in:", expiryMinutes, "mins");
 
     const response = await admin.graphql(
       `#graphql
@@ -131,18 +149,7 @@ export const action = async ({ request }) => {
       `,
       {
         variables: {
-          basicCodeDiscount: {
-            title: `Spin Win ${finalCode}`,
-            code: finalCode,
-            startsAt: new Date().toISOString(),
-            customerSelection: { all: true },
-            appliesOncePerCustomer: true,
-            customerGets: {
-              value: { percentage: percentageValue },
-              items: { all: true }
-            },
-            usageLimit: usageLimit
-          }
+          basicCodeDiscount: discountInput
         }
       }
     );
