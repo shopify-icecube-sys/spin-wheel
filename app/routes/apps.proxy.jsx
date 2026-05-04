@@ -9,7 +9,7 @@ export const loader = async ({ request }) => {
 export const action = async ({ request }) => {
   try {
     const { admin, session } = await authenticate.public.appProxy(request);
-    
+
     if (!admin || !session) {
       console.error("Proxy Error: No admin or session object returned");
       return data({ error: "Unauthorized access to app proxy. Please refresh the page." });
@@ -17,12 +17,13 @@ export const action = async ({ request }) => {
 
     const formData = await request.formData();
     const actionType = formData.get("action");
+    const rawEmail = formData.get("email") || "";
+    const email = rawEmail.trim().toLowerCase(); // NORMALIZE: Always lowercase
 
-    console.log("Proxy Action received:", actionType, "for shop:", session.shop);
+    console.log("Proxy Action received:", actionType, "for email:", email);
 
-    // --- Action 1: Create Customer (Lead Generation) ---
+    // --- Action 1: Create Customer & Check Cooldown ---
     if (actionType === "create_customer") {
-      const email = formData.get("email");
       if (!email) return data({ error: "Email is required" }, { status: 400 });
 
       // --- Action 1a: Check Server-Side Cooldown (Database) ---
@@ -34,15 +35,14 @@ export const action = async ({ request }) => {
 
         if (existingLead) {
           const cooldownDays = parseInt(formData.get("cooldownDays")) || 30;
-
           const diff = Date.now() - new Date(existingLead.createdAt).getTime();
           const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000;
 
           if (diff < cooldownMs) {
-            const remainingMs = cooldownMs - diff;
-            const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
-            return data({ 
-              error: `This email has already been used. You can spin again in ${remainingDays} ${remainingDays === 1 ? 'day' : 'days'}.` 
+            const remainingDays = Math.ceil((cooldownMs - diff) / (24 * 60 * 60 * 1000));
+            console.log(`Cooldown active for ${email}: ${remainingDays} days left.`);
+            return data({
+              error: `This email has already been used. You can spin again in ${remainingDays} days.`
             });
           }
         }
@@ -51,7 +51,7 @@ export const action = async ({ request }) => {
       }
 
       console.log("Attempting to create customer for email:", email);
-      
+
       const response = await admin.graphql(
         `#graphql
         mutation customerCreate($input: CustomerInput!) {
@@ -76,11 +76,11 @@ export const action = async ({ request }) => {
       );
 
       const result = await response.json();
-      
+
       if (result.errors) {
         console.error("GraphQL Execution Errors:", JSON.stringify(result.errors, null, 2));
         if (result.errors[0].message.includes("access the Customer object")) {
-           return data({ error: "PERMISSION REQUIRED: Please go to your Shopify Partner Dashboard -> App -> API Access and request access to 'Protected Customer Data'." });
+          return data({ error: "PERMISSION REQUIRED: Please go to your Shopify Partner Dashboard -> App -> API Access and request access to 'Protected Customer Data'." });
         }
         return data({ error: "Shopify API Error: " + result.errors[0].message });
       }
@@ -89,12 +89,12 @@ export const action = async ({ request }) => {
       const userErrors = result.data?.customerCreate?.userErrors;
 
       if (userErrors && userErrors.length > 0) {
-        const isAlreadyExists = userErrors.some(e => 
-          e.message.toLowerCase().includes("taken") || 
+        const isAlreadyExists = userErrors.some(e =>
+          e.message.toLowerCase().includes("taken") ||
           e.message.toLowerCase().includes("exists") ||
           e.message.toLowerCase().includes("already")
         );
-        
+
         if (isAlreadyExists) {
           // Fetch the existing customer ID
           const searchRes = await admin.graphql(
@@ -117,100 +117,89 @@ export const action = async ({ request }) => {
       return data({ success: true, customerId: customer?.id });
     }
 
-    // --- Action 2: Generate Unique Discount ---
+    // --- Action 2: Process Spin Result & Record Lead ---
     const label = formData.get("label") || "";
-    const email = formData.get("email") || "Unknown";
     const customerId = formData.get("customerId");
-    const usageLimit = parseInt(formData.get("usageLimit")) || 1;
-    const expiryMinutes = parseInt(formData.get("expiryMinutes")) || 0;
-
-    // Enhanced matching: look for numbers in the label
-    const match = label.match(/(\d+)/);
-    if (!match) {
-        console.log("No numerical value found in label, skipping discount generation for:", label);
-        return data({ error: "This segment does not carry a discount." });
-    }
-
-    const percentageValue = parseFloat(match[1]) / 100;
+    const isWin = formData.get("isWin") === "true";
     
-    // Safety check: ensure percentage is between 1% and 100%
-    if (percentageValue <= 0 || percentageValue > 1) {
-        return data({ error: "Invalid discount percentage." });
-    }
-    
-    const uniqueId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const cleanValue = match[1];
-    const finalCode = `${cleanValue}PERCENT-${uniqueId}`;
+    let finalCode = "NONE";
+    let discountId = null;
 
-    const discountInput = {
-      title: `Spin Win ${finalCode}`,
-      code: finalCode,
-      startsAt: new Date().toISOString(),
-      customerSelection: { all: true },
-      appliesOncePerCustomer: true,
-      customerGets: {
-        value: { percentage: percentageValue },
-        items: { all: true }
-      },
-      usageLimit: usageLimit
-    };
+    if (isWin) {
+      // EXTREMELY STRICT matching: look for numbers followed by % or OFF or PERCENT
+      const match = label.match(/(\d+)\s*(?:%|PERCENT|OFF)/i);
+      if (!match) {
+        console.log("No valid discount pattern found in label, recording as lead only:", label);
+      } else {
+        const percentageValue = parseFloat(match[1]) / 100;
+        const uniqueId = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const cleanValue = match[1];
+        finalCode = `${cleanValue}PERCENT-${uniqueId}`;
 
-    if (customerId) {
-       discountInput.customerSelection = {
-         customers: { add: [customerId] }
-       };
-    }
+        const discountInput = {
+          title: `Spin Win ${finalCode}`,
+          code: finalCode,
+          startsAt: new Date().toISOString(),
+          customerSelection: { all: true },
+          appliesOncePerCustomer: true,
+          customerGets: {
+            value: { percentage: percentageValue },
+            items: { all: true }
+          },
+          usageLimit: 1 // STRICT: Total 1 use allowed globally
+        };
 
-    if (expiryMinutes > 0) {
-      discountInput.endsAt = new Date(Date.now() + expiryMinutes * 60000).toISOString();
-    }
+        if (customerId) {
+          discountInput.customerSelection = {
+            customers: { add: [customerId] }
+          };
+        }
 
-    console.log("Generating discount for label:", label, "code:", finalCode, "expires in:", expiryMinutes, "mins");
+        const response = await admin.graphql(
+          `#graphql
+          mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+            discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+              codeDiscountNode { id }
+              userErrors { field message }
+            }
+          }
+          `,
+          { variables: { basicCodeDiscount: discountInput } }
+        );
 
-    const response = await admin.graphql(
-      `#graphql
-      mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
-        discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
-          userErrors { field message }
+        const result = await response.json();
+        
+        if (result.errors) {
+          console.error("Shopify GraphQL Error:", JSON.stringify(result.errors));
+          return data({ error: result.errors[0].message });
+        }
+        
+        if (result.data?.discountCodeBasicCreate?.codeDiscountNode) {
+          discountId = result.data.discountCodeBasicCreate.codeDiscountNode.id;
+        } else if (result.data?.discountCodeBasicCreate?.userErrors?.length > 0) {
+          console.error("Shopify Discount User Error:", JSON.stringify(result.data.discountCodeBasicCreate.userErrors));
+          return data({ error: result.data.discountCodeBasicCreate.userErrors[0].message });
         }
       }
-      `,
-      {
-        variables: {
-          basicCodeDiscount: discountInput
-        }
-      }
-    );
-
-    const result = await response.json();
-    if (result.errors) {
-      console.error("Discount Creation Errors:", result.errors);
-      return data({ error: "GraphQL Error: " + result.errors[0].message });
     }
 
-    const userErrors = result.data?.discountCodeBasicCreate?.userErrors;
-    if (userErrors && userErrors.length > 0) {
-      console.error("Discount User Errors:", userErrors);
-      return data({ error: userErrors[0].message });
-    }
-
-    // --- Action 3: Save to Database ---
+    // --- Action 3: Save to Database (ALWAYS - Win or Loss) ---
     try {
       await db.lead.create({
         data: {
           shop: session.shop,
           email: email,
-          couponCode: finalCode,
           prize: label,
+          couponCode: finalCode
         }
       });
-      console.log("Lead saved to database successfully.");
+      console.log("Lead successfully recorded for:", email, "Prize:", label);
     } catch (dbErr) {
       console.error("Database Save Error:", dbErr);
-      // We don't return error to user here because the coupon was already created
+      // Still return the code to user if we generated one
     }
 
-    return data({ code: finalCode });
+    return data({ success: true, code: finalCode === "NONE" ? null : finalCode });
 
   } catch (err) {
     console.error("CRITICAL PROXY ERROR:", err);

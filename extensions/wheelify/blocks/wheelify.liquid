@@ -601,24 +601,25 @@
       // Robust win check: Any label with a number is treated as a win
       var isWin = /\d/.test(winner.label);
 
-      if (!isWin) {
+      // --- Server-side recording & Coupon generation ---
+      if (isWin) {
+        resultMsg.textContent = '🎉 You won: ' + (winner.winText || winner.label);
+        document.getElementById('wheelify-coupon-wrap').style.display = 'flex';
+        couponCode.textContent = 'Generating...';
+      } else {
         resultMsg.textContent = winner.winText || winner.label || 'Better luck next time!';
         document.getElementById('wheelify-coupon-wrap').style.display = 'none';
-        appliedMsg.style.display = 'none';
-        return;
       }
+      
+      appliedMsg.style.display = 'none';
 
-      resultMsg.textContent = '🎉 You won: ' + (winner.winText || winner.label);
-      document.getElementById('wheelify-coupon-wrap').style.display = 'flex';
-      appliedMsg.style.display = 'none'; // Clear previous error/success
-
-      couponCode.textContent = 'Generating...';
       var formData = new FormData();
       formData.append('label', winner.label);
       formData.append('email', userEmail);
       formData.append('customerId', currentCustomerId);
       formData.append('usageLimit', {{ usage_limit | json }});
       formData.append('expiryMinutes', {{ expiry_minutes | json }});
+      formData.append('isWin', isWin ? 'true' : 'false'); // Tell server if it was a win
 
       fetch('/apps/wheelify', { method: 'POST', body: formData })
       .then(function(res) { return res.json(); })
@@ -631,18 +632,19 @@
           {% endif %}
           appliedMsg.innerHTML = msg;
           appliedMsg.style.display = 'block';
-        } else {
+        } else if (data.success) {
+          // Successfully recorded a loss
+          console.log("Loss recorded successfully.");
+        } else if (data.error && isWin) {
           couponCode.textContent = 'ERROR';
-          if (data.error) {
-             appliedMsg.textContent = '❌ ' + data.error;
-             appliedMsg.style.color = '#ff4d4d';
-             appliedMsg.style.display = 'block';
-          }
+          appliedMsg.textContent = '❌ ' + data.error;
+          appliedMsg.style.color = '#ff4d4d';
+          appliedMsg.style.display = 'block';
         }
       })
       .catch(function(err) {
-        console.error('Discount generation error:', err);
-        couponCode.textContent = 'ERROR';
+        console.error('Server sync error:', err);
+        if (isWin) couponCode.textContent = 'ERROR';
       });
     }
 
