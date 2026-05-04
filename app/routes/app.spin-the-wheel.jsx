@@ -122,16 +122,16 @@ export const action = async ({ request }) => {
 };
 
 const DEFAULT_SLICES = [
-  { type: 'Win', label: '10% OFF', winText: '10% OFF', coupon: '10PERCENT', gravity: '10', color: '#d9534f' },
-  { type: 'Win', label: '20% OFF', winText: '20% OFF', coupon: '20PERCENT', gravity: '10', color: '#8e44ad' },
-  { type: 'Win', label: '30% OFF', winText: '30% OFF', coupon: '30PERCENT', gravity: '10', color: '#e67e22' },
-  { type: 'Win', label: '40% OFF', winText: '40% OFF', coupon: '40PERCENT', gravity: '10', color: '#f1c40f' },
-  { type: 'Win', label: '50% OFF', winText: '50% OFF', coupon: '50PERCENT', gravity: '10', color: '#2c3e50' },
-  { type: 'Win', label: '60% OFF', winText: '60% OFF', coupon: '60PERCENT', gravity: '10', color: '#e74c3c' },
-  { type: 'Win', label: '70% OFF', winText: '70% OFF', coupon: '70PERCENT', gravity: '10', color: '#9b59b6' },
-  { type: 'Win', label: '80% OFF', winText: '80% OFF', coupon: '80PERCENT', gravity: '10', color: '#34495e' },
-  { type: 'Win', label: '90% OFF', winText: '90% OFF', coupon: '90PERCENT', gravity: '10', color: '#27ae60' },
-  { type: 'Win', label: '100% OFF', winText: '100% OFF', coupon: '100PERCENT', gravity: '10', color: '#3498db' },
+  { type: 'Win', label: '10% OFF', winText: '10% OFF', coupon: '10PERCENT', gravity: '10', color: '#ff4d6d' },
+  { type: 'Lose', label: 'Better luck!', winText: '', coupon: '', gravity: '10', color: '#f7cad0' },
+  { type: 'Win', label: '20% OFF', winText: '20% OFF', coupon: '20PERCENT', gravity: '10', color: '#ff758f' },
+  { type: 'Lose', label: 'Try again!', winText: '', coupon: '', gravity: '10', color: '#ff99ac' },
+  { type: 'Win', label: '30% OFF', winText: '30% OFF', coupon: '30PERCENT', gravity: '10', color: '#ff85a1' },
+  { type: 'Lose', label: 'Almost!', winText: '', coupon: '', gravity: '10', color: '#ffb3c1' },
+  { type: 'Win', label: '40% OFF', winText: '40% OFF', coupon: '40PERCENT', gravity: '10', color: '#ff99ac' },
+  { type: 'Lose', label: 'Next time!', winText: '', coupon: '', gravity: '10', color: '#ffe5ec' },
+  { type: 'Win', label: '50% OFF', winText: '50% OFF', coupon: '50PERCENT', gravity: '10', color: '#ff4d6d' },
+  { type: 'Lose', label: 'So close!', winText: '', coupon: '', gravity: '10', color: '#f7cad0' },
 ];
 
 export default function SpinTheWheel() {
@@ -140,7 +140,7 @@ export default function SpinTheWheel() {
   const actionData = useActionData();
   const navigation = useNavigation();
 
-  const [slices, setSlices] = useState(savedSlices || DEFAULT_SLICES);
+  const [slices, setSlices] = useState((savedSlices || DEFAULT_SLICES).slice(0, 10));
   const [showToast, setShowToast] = useState(false);
 
   const isSaving = navigation.state === "submitting";
@@ -201,7 +201,12 @@ export default function SpinTheWheel() {
                       <input type="text" value={slice.label} onChange={(e) => handleSliceChange(i, 'label', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
                     </div>
 
-                    {slice.type === 'Win' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '80px' }}>
+                      <label style={{ fontSize: '12px' }}>Gravity*</label>
+                      <input type="number" value={slice.gravity} onChange={(e) => handleSliceChange(i, 'gravity', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
+                    </div>
+
+                    {i % 2 === 0 ? (
                       <>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1', minWidth: '120px' }}>
                           <label style={{ fontSize: '12px' }}>Win text</label>
@@ -211,12 +216,8 @@ export default function SpinTheWheel() {
                           <label style={{ fontSize: '12px' }}>Coupon</label>
                           <input type="text" value={slice.coupon} onChange={(e) => handleSliceChange(i, 'coupon', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '80px' }}>
-                          <label style={{ fontSize: '12px' }}>Gravity*</label>
-                          <input type="number" value={slice.gravity} onChange={(e) => handleSliceChange(i, 'gravity', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
-                        </div>
                       </>
-                    )}
+                    ) : null}
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100px' }}>
                       <label style={{ fontSize: '12px' }}>Slice color</label>

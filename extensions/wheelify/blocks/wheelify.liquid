@@ -4,26 +4,39 @@
 {%- assign popup_pos = 'bottom-right' -%}
 {%- assign trigger_text = 'Spin & Win!' -%}
 {%- assign popup_title = "Valentine's Day Sale!" -%}
-{%- assign popup_subtitle = "Enter your email to get a chance to win a discount!" -%}
-{%- assign form_btn_text = "TRY YOUR LUCK!" -%}
-{%- assign spin_btn_text = "🎯 Spin to Win!" -%}
-{%- assign form_disclaimer = "" -%}
+{%- assign popup_subtitle = 'Enter your email to get a chance to win a discount!' -%}
+{%- assign form_btn_text = 'TRY YOUR LUCK!' -%}
+{%- assign spin_btn_text = '🎯 Spin to Win!' -%}
+{%- assign form_disclaimer = '' -%}
 {%- assign usage_limit = 1 -%}
 {%- assign custom_cooldown = 30 -%}
 {%- assign expiry_minutes = 60 -%}
 
-
 {%- if wheel_settings -%}
-  {%- if wheel_settings.popupPosition != nil -%}{%- assign popup_pos = wheel_settings.popupPosition -%}{%- endif -%}
-  {%- if wheel_settings.triggerText != nil -%}{%- assign trigger_text = wheel_settings.triggerText -%}{%- endif -%}
-  {%- if wheel_settings.popupTitle != nil -%}{%- assign popup_title = wheel_settings.popupTitle -%}{%- endif -%}
-  {%- if wheel_settings.popupSubtitle != nil -%}{%- assign popup_subtitle = wheel_settings.popupSubtitle -%}{%- endif -%}
-  {%- if wheel_settings.formButtonText != nil -%}{%- assign form_btn_text = wheel_settings.formButtonText -%}{%- endif -%}
-  {%- if wheel_settings.spinButtonText != nil -%}{%- assign spin_btn_text = wheel_settings.spinButtonText -%}{%- endif -%}
-  {%- if wheel_settings.formDisclaimer != nil -%}{%- assign form_disclaimer = wheel_settings.formDisclaimer -%}{%- endif -%}
-  {%- if wheel_settings.discountUsageLimit != nil -%}{%- assign usage_limit = wheel_settings.discountUsageLimit -%}{%- endif -%}
-  {%- if wheel_settings.customCooldownDays != nil -%}{%- assign custom_cooldown = wheel_settings.customCooldownDays -%}{%- endif -%}
-  {%- if wheel_settings.couponExpiryMinutes != nil -%}{%- assign expiry_minutes = wheel_settings.couponExpiryMinutes -%}{%- endif -%}
+  {%- if wheel_settings.popupPosition != null -%}{%- assign popup_pos = wheel_settings.popupPosition -%}{%- endif -%}
+  {%- if wheel_settings.triggerText != null -%}{%- assign trigger_text = wheel_settings.triggerText -%}{%- endif -%}
+  {%- if wheel_settings.popupTitle != null -%}{%- assign popup_title = wheel_settings.popupTitle -%}{%- endif -%}
+  {%- if wheel_settings.popupSubtitle != null -%}
+    {%- assign popup_subtitle = wheel_settings.popupSubtitle -%}
+  {%- endif -%}
+  {%- if wheel_settings.formButtonText != null -%}
+    {%- assign form_btn_text = wheel_settings.formButtonText -%}
+  {%- endif -%}
+  {%- if wheel_settings.spinButtonText != null -%}
+    {%- assign spin_btn_text = wheel_settings.spinButtonText -%}
+  {%- endif -%}
+  {%- if wheel_settings.formDisclaimer != null -%}
+    {%- assign form_disclaimer = wheel_settings.formDisclaimer -%}
+  {%- endif -%}
+  {%- if wheel_settings.discountUsageLimit != null -%}
+    {%- assign usage_limit = wheel_settings.discountUsageLimit -%}
+  {%- endif -%}
+  {%- if wheel_settings.customCooldownDays != null -%}
+    {%- assign custom_cooldown = wheel_settings.customCooldownDays -%}
+  {%- endif -%}
+  {%- if wheel_settings.couponExpiryMinutes != null -%}
+    {%- assign expiry_minutes = wheel_settings.couponExpiryMinutes -%}
+  {%- endif -%}
 {%- endif -%}
 
 <div id="wheelify-root">
@@ -37,7 +50,7 @@
       <line x1="55" y1="9" x2="9" y2="55" stroke="white" stroke-width="3"/>
       <circle cx="32" cy="32" r="8" fill="white"/>
     </svg>
-    {%- if trigger_text != "" -%}
+    {%- if trigger_text != '' -%}
       <span>{{ trigger_text }}</span>
     {%- endif -%}
   </button>
@@ -46,13 +59,13 @@
   <div id="wheelify-overlay">
     <div id="wheelify-popup">
       <button id="wheelify-close">✕</button>
-      
+
       <div id="wheelify-container">
         <!-- Left: Wheel Section -->
         <div id="wheelify-wheel-section">
           <div id="wheelify-wheel-wrap">
             <div id="wheelify-pointer"></div>
-            <canvas id="wheelify-canvas" width="360" height="360"></canvas>
+            <canvas id="wheelify-canvas" width="460" height="460"></canvas>
             <div id="wheelify-hub"></div>
           </div>
         </div>
@@ -60,8 +73,12 @@
         <!-- Right: Content Section -->
         <div id="wheelify-content-section">
           <div id="wheelify-content-inner">
-            {%- if popup_title != "" -%}<h2 id="wheelify-title">{{ popup_title }}</h2>{%- endif -%}
-            {%- if popup_subtitle != "" -%}<p id="wheelify-subtitle">{{ popup_subtitle }}</p>{%- endif -%}
+            {%- if popup_title != '' -%}
+              <h2 id="wheelify-title">{{ popup_title }}</h2>
+            {%- endif -%}
+            {%- if popup_subtitle != '' -%}
+              <p id="wheelify-subtitle">{{ popup_subtitle }}</p>
+            {%- endif -%}
 
             <!-- Step 1: Lead Gen Form -->
             <div id="wheelify-step-1">
@@ -69,7 +86,10 @@
                 <input type="email" id="wheelify-email" placeholder="Email" aria-label="Email" required>
               </div>
               <button id="wheelify-submit-btn">{{ form_btn_text }}</button>
-              <p id="wheelify-error" style="display:none; color:#ff4d4d; font-size:12px; margin-top:8px; font-weight:600;"></p>
+              <p
+                id="wheelify-error"
+                style="display:none; color:#ff4d4d; font-size:12px; margin-top:8px; font-weight:600;"
+              ></p>
             </div>
 
             <!-- Step 2: Spin Action (Hidden initially) -->
@@ -90,10 +110,13 @@
             <!-- Step 4: Cooldown Warning -->
             <div id="wheelify-cooldown" style="display:none;">
               <div style="font-size: 50px; margin-bottom: 15px;">⏳</div>
-              <p id="wheelify-cooldown-msg" style="color: #ff4d6d; font-weight: 800; font-size: 20px; line-height: 1.4;"></p>
+              <p
+                id="wheelify-cooldown-msg"
+                style="color: #ff4d6d; font-weight: 800; font-size: 20px; line-height: 1.4;"
+              ></p>
             </div>
 
-            {%- if form_disclaimer != "" -%}
+            {%- if form_disclaimer != '' -%}
               <p id="wheelify-disclaimer">{{ form_disclaimer }}</p>
             {%- endif -%}
           </div>
@@ -156,7 +179,7 @@
     background-position: center;
     border-radius: 32px;
     width: 100%;
-    max-width: 850px;
+    max-width: 1000px;
     min-height: 500px;
     position: relative;
     overflow: hidden;
@@ -195,8 +218,8 @@
     #wheelify-popup { flex-direction: column; max-width: 400px; max-height: 90vh; overflow-y: auto; }
     #wheelify-container { flex-direction: column; }
     #wheelify-wheel-section { padding: 20px; }
-    #wheelify-canvas { width: 280px !important; height: 280px !important; }
-    #wheelify-wheel-wrap { width: 280px !important; height: 280px !important; }
+    #wheelify-canvas { width: 320px !important; height: 320px !important; }
+    #wheelify-wheel-wrap { width: 320px !important; height: 320px !important; }
   }
 
   #wheelify-close {
@@ -273,34 +296,36 @@
 
   #wheelify-wheel-wrap {
     position: relative;
-    width: 360px; height: 360px;
+    width: 460px; height: 460px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
   }
   #wheelify-pointer {
     position: absolute;
-    top: 50%; right: -15px;
+    top: 50%; right: -20px;
     transform: translateY(-50%) rotate(90deg);
     width: 0; height: 0;
     border-left: 15px solid transparent;
     border-right: 15px solid transparent;
-    border-top: 30px solid #fff;
+    border-top: 30px solid #ff4d6d;
     z-index: 10;
     filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
   }
   #wheelify-canvas {
-    border-radius: 50%;
-    border: 12px solid white;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
     display: block;
+    filter: drop-shadow(0 10px 30px rgba(0,0,0,0.15));
   }
   #wheelify-hub {
     position: absolute;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 50px; height: 50px;
+    width: 40px; height: 40px;
     background: white;
     border-radius: 50%;
     z-index: 5;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -308,7 +333,7 @@
   #wheelify-hub::after {
     content: '★';
     color: #ff4d6d;
-    font-size: 24px;
+    font-size: 20px;
   }
 
   #wheelify-result {
@@ -342,281 +367,309 @@
     font-size: 14px;
     font-weight: 700;
   }
-  #wheelify-applied-msg { margin-top: 12px; font-size: 14px; color: #27ae60; font-weight: 700; }
+  #wheelify-applied-msg { margin-top: 12px; font-size: 16px; color: #27ae60; font-weight: 700; }
 </style>
 
 <script>
-(function() {
-  // --- Load Config ---
-  // --- Load Config ---
-  var slices = [
-    {%- if wheel_config -%}
-      {%- for slice in wheel_config -%}
-        { 
-          label: {{ slice.label | json }}, 
-          winText: {{ slice.winText | json }}, 
-          coupon: {{ slice.coupon | json }}, 
-          gravity: {{ slice.gravity | default: 10 }}, 
-          color: {{ slice.color | default: "#ff4d6d" | json }} 
-        }{%- unless forloop.last -%},{%- endunless -%}
-      {%- endfor -%}
-    {%- else -%}
-      { label: '10% OFF', gravity: 40, color: '#ff4d6d' },
-      { label: '20% OFF', gravity: 20, color: '#ff758f' },
-      { label: '30% OFF', gravity: 15, color: '#ff85a1' },
-      { label: '40% OFF', gravity: 10, color: '#ff99ac' },
-      { label: '50% OFF', gravity: 5, color: '#f7cad0' },
-      { label: '60% OFF', gravity: 4, color: '#ff4d6d' },
-      { label: '70% OFF', gravity: 3, color: '#ff758f' },
-      { label: '80% OFF', gravity: 1, color: '#ff85a1' },
-      { label: '90% OFF', gravity: 1, color: '#ff99ac' },
-      { label: '100% OFF', gravity: 1, color: '#f7cad0' }
-    {%- endif -%}
-  ];
+  (function() {
+    // --- Load Config ---
+    // --- Load Config ---
+    var slices = [
+      {%- if wheel_config -%}
+        {%- for slice in wheel_config limit: 10 -%}
+          {
+            label: {{ slice.label | json }},
+            winText: {{ slice.winText | json }},
+            coupon: {{ slice.coupon | json }},
+            gravity: {{ slice.gravity | default: 10 }},
+            color: {{ slice.color | default: "#ff4d6d" | json }},
+            type: {{ slice.type | default: "Win" | json }}
+          }{%- unless forloop.last -%},{%- endunless -%}
+        {%- endfor -%}
+      {%- else -%}
+        { label: '10% OFF', gravity: 40, color: '#ff4d6d', type: 'Win' },
+        { label: 'Better luck!', gravity: 30, color: '#f7cad0', type: 'Lose' },
+        { label: '20% OFF', gravity: 20, color: '#ff758f', type: 'Win' },
+        { label: 'Try again!', gravity: 25, color: '#ff99ac', type: 'Lose' },
+        { label: '30% OFF', gravity: 15, color: '#ff85a1', type: 'Win' },
+        { label: 'Almost!', gravity: 20, color: '#ffb3c1', type: 'Lose' },
+        { label: '40% OFF', gravity: 10, color: '#ff99ac', type: 'Win' },
+        { label: 'Next time!', gravity: 15, color: '#ffe5ec', type: 'Lose' },
+        { label: '50% OFF', gravity: 5, color: '#ff4d6d', type: 'Win' },
+        { label: 'So close!', gravity: 10, color: '#f7cad0', type: 'Lose' }
+      {%- endif -%}
+    ];
 
-  // --- Elements ---
-  var trigger = document.getElementById('wheelify-trigger');
-  var overlay = document.getElementById('wheelify-overlay');
-  var closeBtn = document.getElementById('wheelify-close');
-  var submitBtn = document.getElementById('wheelify-submit-btn');
-  var spinBtn = document.getElementById('wheelify-spin-btn');
-  var emailInput = document.getElementById('wheelify-email');
-  var errorMsg = document.getElementById('wheelify-error');
-  var step1 = document.getElementById('wheelify-step-1');
-  var step2 = document.getElementById('wheelify-step-2');
-  var resultPanel = document.getElementById('wheelify-result');
-  var resultMsg = document.getElementById('wheelify-result-msg');
-  var couponCode = document.getElementById('wheelify-coupon-code');
-  var copyBtn = document.getElementById('wheelify-copy-btn');
-  var appliedMsg = document.getElementById('wheelify-applied-msg');
-  var canvas = document.getElementById('wheelify-canvas');
-  var ctx = canvas.getContext('2d');
-  var userEmail = '';
-  var currentCustomerId = '';
-
-  // --- Cooldown Logic ---
-  var customDays = {{ custom_cooldown | json }};
-  var storageKey = 'wheelify_spun';
-  var cooldownPanel = document.getElementById('wheelify-cooldown');
-  var cooldownMsg = document.getElementById('wheelify-cooldown-msg');
-
-  function checkCooldown() {
-    var storedValue = localStorage.getItem(storageKey);
-    if (!storedValue) return false;
-    
-    var diff = Date.now() - parseInt(storedValue);
-    var cooldownMs = customDays * 24 * 60 * 60 * 1000;
-    
-    if (diff < cooldownMs) {
-      var remainingMs = cooldownMs - diff;
-      var remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
-      return remainingDays;
+    // --- Elements ---
+    var trigger = document.getElementById('wheelify-trigger');
+    var overlay = document.getElementById('wheelify-overlay');
+    var closeBtn = document.getElementById('wheelify-close');
+    var submitBtn = document.getElementById('wheelify-submit-btn');
+    var spinBtn = document.getElementById('wheelify-spin-btn');
+    var emailInput = document.getElementById('wheelify-email');
+    var errorMsg = document.getElementById('wheelify-error');
+    var step1 = document.getElementById('wheelify-step-1');
+    var step2 = document.getElementById('wheelify-step-2');
+    var resultPanel = document.getElementById('wheelify-result');
+    var resultMsg = document.getElementById('wheelify-result-msg');
+    var couponCode = document.getElementById('wheelify-coupon-code');
+    var copyBtn = document.getElementById('wheelify-copy-btn');
+    var appliedMsg = document.getElementById('wheelify-applied-msg');
+    var canvas = document.getElementById('wheelify-canvas');
+    var ctx = canvas.getContext('2d');
+    // Support for letter spacing in canvas if available
+    if ('letterSpacing' in ctx) {
+      ctx.letterSpacing = '0.5px';
     }
-    return false;
-  }
+    var userEmail = '';
+    var currentCustomerId = '';
 
-  // --- Draw Wheel ---
-  var numSlices = slices.length;
-  var sliceAngle = (2 * Math.PI) / numSlices;
-  var currentRotation = 0;
+    // --- Cooldown Logic ---
+    var customDays = {{ custom_cooldown | json }};
+    var storageKey = 'wheelify_spun';
+    var cooldownPanel = document.getElementById('wheelify-cooldown');
+    var cooldownMsg = document.getElementById('wheelify-cooldown-msg');
 
-  function drawWheel(rotation) {
-    ctx.clearRect(0, 0, 360, 360);
-    var cx = 180, cy = 180, radius = 175;
-    slices.forEach(function(slice, i) {
-      var startAngle = rotation + i * sliceAngle;
-      var endAngle = startAngle + sliceAngle;
+    function checkCooldown() {
+      var storedValue = localStorage.getItem(storageKey);
+      if (!storedValue) return false;
 
+      var diff = Date.now() - parseInt(storedValue);
+      var cooldownMs = customDays * 24 * 60 * 60 * 1000;
+
+      if (diff < cooldownMs) {
+        var remainingMs = cooldownMs - diff;
+        var remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+        return remainingDays;
+      }
+      return false;
+    }
+
+    // --- Draw Wheel ---
+    var numSlices = slices.length;
+    var sliceAngle = (2 * Math.PI) / numSlices;
+    var currentRotation = 0;
+
+    function drawWheel(rotation) {
+      ctx.clearRect(0, 0, 460, 460);
+      var cx = 230, cy = 230, radius = 220;
+
+      // Outer white ring border
       ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, radius, startAngle, endAngle);
-      ctx.closePath();
-      ctx.fillStyle = slice.color;
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(startAngle + sliceAngle / 2);
-      ctx.textAlign = 'right';
+      ctx.arc(cx, cy, radius + 8, 0, 2 * Math.PI);
       ctx.fillStyle = 'white';
-      ctx.font = 'bold 16px Outfit, sans-serif';
-      ctx.fillText(slice.label, radius - 20, 6);
-      ctx.restore();
-    });
-  }
+      ctx.fill();
 
-  drawWheel(currentRotation);
+      slices.forEach(function(slice, i) {
+        var startAngle = rotation + i * sliceAngle;
+        var endAngle = startAngle + sliceAngle;
 
-  // --- Step 1: Lead Gen ---
-  submitBtn.addEventListener('click', function() {
-    var email = emailInput.value;
-    if (!email || !email.includes('@')) {
-      errorMsg.textContent = 'Please enter a valid email address.';
-      errorMsg.style.display = 'block';
-      return;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = slice.color;
+        ctx.fill();
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'white';
+
+        // Shadow for maximum contrast/readability
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 5;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
+        // Uniform larger font size for high visibility
+        ctx.font = 'bold 17px Outfit, sans-serif';
+        ctx.textBaseline = 'middle';
+
+        // Precise positioning (Hub at 20, Outer at 220, Balanced at 130 for 17px font)
+        ctx.fillText(slice.label, 130, 0);
+        ctx.restore();
+      });
     }
 
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Processing...';
-    errorMsg.style.display = 'none';
+    drawWheel(currentRotation);
 
-    var formData = new FormData();
-    formData.append('action', 'create_customer');
-    formData.append('email', email);
-    formData.append('cooldownDays', {{ custom_cooldown | json }});
+    // --- Step 1: Lead Gen ---
+    submitBtn.addEventListener('click', function() {
+      var email = emailInput.value;
+      if (!email || !email.includes('@')) {
+        errorMsg.textContent = 'Please enter a valid email address.';
+        errorMsg.style.display = 'block';
+        return;
+      }
 
-    fetch('/apps/wheelify', { method: 'POST', body: formData })
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      if (data.success) {
-        userEmail = email;
-        currentCustomerId = data.customerId || '';
-        step1.style.display = 'none';
-        step2.style.display = 'block';
-      } else {
-        errorMsg.textContent = data.error || 'Something went wrong. Please try again.';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Processing...';
+      errorMsg.style.display = 'none';
+
+      var formData = new FormData();
+      formData.append('action', 'create_customer');
+      formData.append('email', email);
+      formData.append('cooldownDays', {{ custom_cooldown | json }});
+
+      fetch('/apps/wheelify', { method: 'POST', body: formData })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.success) {
+          userEmail = email;
+          currentCustomerId = data.customerId || '';
+          step1.style.display = 'none';
+          step2.style.display = 'block';
+        } else {
+          errorMsg.textContent = data.error || 'Something went wrong. Please try again.';
+          errorMsg.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = {{ form_btn_text | json }};
+        }
+      })
+      .catch(function(err) {
+        console.error(err);
+        errorMsg.textContent = 'Connection error. Please try again.';
         errorMsg.style.display = 'block';
         submitBtn.disabled = false;
         submitBtn.textContent = {{ form_btn_text | json }};
-      }
-    })
-    .catch(function(err) {
-      console.error(err);
-      errorMsg.textContent = 'Connection error. Please try again.';
-      errorMsg.style.display = 'block';
-      submitBtn.disabled = false;
-      submitBtn.textContent = {{ form_btn_text | json }};
+      });
     });
-  });
 
-  // --- Step 2: Spin ---
-  var isSpinning = false;
-  spinBtn.addEventListener('click', function() {
-    if (isSpinning) return;
-    isSpinning = true;
-    spinBtn.disabled = true;
+    // --- Step 2: Spin ---
+    var isSpinning = false;
+    spinBtn.addEventListener('click', function() {
+      if (isSpinning) return;
+      isSpinning = true;
+      spinBtn.disabled = true;
 
-    // --- Proper Linear Weighted Logic ---
-    var totalWeight = slices.reduce(function(sum, s) { 
-        return sum + (parseFloat(s.gravity) || 0); 
-    }, 0);
-    
-    if (totalWeight <= 0) totalWeight = slices.length; // Fallback
-    
-    var rand = Math.random() * totalWeight;
-    var cumulative = 0;
-    var winnerIndex = 0;
-    
-    for (var i = 0; i < slices.length; i++) {
-      var g = parseFloat(slices[i].gravity) || 0;
-      if (totalWeight === slices.length) g = 1; // Fallback
-      cumulative += g;
-      if (rand <= cumulative) { 
-        winnerIndex = i; 
-        break; 
-      }
-    }
-    
-    console.log("Spin started. Winner Index:", winnerIndex, "Label:", slices[winnerIndex].label);
+      // --- Proper Linear Weighted Logic ---
+      var totalWeight = slices.reduce(function(sum, s) {
+          return sum + (parseFloat(s.gravity) || 0);
+      }, 0);
 
-    var winnerAngle = sliceAngle * winnerIndex;
-    // Pointer is at the RIGHT (0 rad)
-    var targetAngle = 0 - (winnerAngle + sliceAngle / 2);
-    var extraSpins = (6 + Math.floor(Math.random() * 4)) * 2 * Math.PI;
-    var finalRotation = currentRotation + extraSpins + (targetAngle - (currentRotation % (2 * Math.PI)));
+      if (totalWeight <= 0) totalWeight = slices.length; // Fallback
 
-    var startTime = null;
-    var duration = 5000;
-    var startRot = currentRotation;
+      var rand = Math.random() * totalWeight;
+      var cumulative = 0;
+      var winnerIndex = 0;
 
-    function animate(timestamp) {
-      if (!startTime) startTime = timestamp;
-      var progress = Math.min((timestamp - startTime) / duration, 1);
-      var eased = 1 - Math.pow(1 - progress, 4);
-      currentRotation = startRot + (finalRotation - startRot) * eased;
-      drawWheel(currentRotation);
-      if (progress < 1) requestAnimationFrame(animate);
-      else {
-        isSpinning = false;
-        showResult(winnerIndex);
-      }
-    }
-    requestAnimationFrame(animate);
-  });
-
-  function showResult(winnerIndex) {
-    var winner = slices[winnerIndex];
-    localStorage.setItem(storageKey, Date.now().toString());
-    step2.style.display = 'none';
-    resultPanel.style.display = 'block';
-    resultMsg.textContent = '🎉 ' + (winner.label.toUpperCase() === 'NO LUCK' ? 'Better luck next time!' : 'You won: ' + winner.label + '!');
-    
-    if (winner.label.toUpperCase() === 'NO LUCK') {
-      couponCode.parentElement.style.display = 'none';
-      return;
-    }
-
-    couponCode.textContent = 'Generating...';
-    var formData = new FormData();
-    formData.append('label', winner.label);
-    formData.append('email', userEmail);
-    formData.append('customerId', currentCustomerId);
-    formData.append('usageLimit', {{ usage_limit | json }});
-    formData.append('expiryMinutes', {{ expiry_minutes | json }});
-
-    fetch('/apps/wheelify', { method: 'POST', body: formData })
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      if (data.code) {
-        couponCode.textContent = data.code;
-        var msg = '✅ Copy the code and use it at checkout!';
-        {% if expiry_minutes > 0 %}
-          msg += ' <br><span style="font-size: 12px; opacity: 0.8;">Note: This code expires in {{ expiry_minutes }} minutes.</span>';
-        {% endif %}
-        appliedMsg.innerHTML = msg;
-        appliedMsg.style.display = 'block';
-      } else {
-        couponCode.textContent = 'ERROR';
-        if (data.error) {
-           appliedMsg.textContent = '❌ ' + data.error;
-           appliedMsg.style.color = '#ff4d4d';
-           appliedMsg.style.display = 'block';
+      for (var i = 0; i < slices.length; i++) {
+        var g = parseFloat(slices[i].gravity) || 0;
+        if (totalWeight === slices.length) g = 1; // Fallback
+        cumulative += g;
+        if (rand <= cumulative) {
+          winnerIndex = i;
+          break;
         }
       }
-    })
-    .catch(function(err) {
-      console.error('Discount generation error:', err);
-      couponCode.textContent = 'ERROR';
-    });
-  }
 
-  copyBtn.addEventListener('click', function() {
-    navigator.clipboard.writeText(couponCode.textContent).then(function() {
-      copyBtn.textContent = 'Copied!';
-      setTimeout(function() { copyBtn.textContent = 'Copy'; }, 2000);
-    });
-  });
+      console.log("Spin started. Winner Index:", winnerIndex, "Label:", slices[winnerIndex].label);
 
-  trigger.addEventListener('click', function() { 
-    var remainingDays = checkCooldown();
-    if (remainingDays) {
-      step1.style.display = 'none';
+      var winnerAngle = sliceAngle * winnerIndex;
+      // Pointer is at the RIGHT (0 rad)
+      var targetAngle = 0 - (winnerAngle + sliceAngle / 2);
+      var extraSpins = (6 + Math.floor(Math.random() * 4)) * 2 * Math.PI;
+      var finalRotation = currentRotation + extraSpins + (targetAngle - (currentRotation % (2 * Math.PI)));
+
+      var startTime = null;
+      var duration = 5000;
+      var startRot = currentRotation;
+
+      function animate(timestamp) {
+        if (!startTime) startTime = timestamp;
+        var progress = Math.min((timestamp - startTime) / duration, 1);
+        var eased = 1 - Math.pow(1 - progress, 4);
+        currentRotation = startRot + (finalRotation - startRot) * eased;
+        drawWheel(currentRotation);
+        if (progress < 1) requestAnimationFrame(animate);
+        else {
+          isSpinning = false;
+          showResult(winnerIndex);
+        }
+      }
+      requestAnimationFrame(animate);
+    });
+
+    function showResult(winnerIndex) {
+      var winner = slices[winnerIndex];
+      localStorage.setItem(storageKey, Date.now().toString());
       step2.style.display = 'none';
-      resultPanel.style.display = 'none';
-      cooldownPanel.style.display = 'block';
-      cooldownMsg.textContent = 'Wait! You can spin the wheel again after ' + remainingDays + (remainingDays === 1 ? ' day.' : ' days.');
-    } else {
-      cooldownPanel.style.display = 'none';
-      // Normal logic: show step 1 or 2
-      step1.style.display = 'block';
+      resultPanel.style.display = 'block';
+
+      // Robust win check: Any label with a number is treated as a win
+      var isWin = /\d/.test(winner.label);
+
+      if (!isWin) {
+        resultMsg.textContent = winner.winText || winner.label || 'Better luck next time!';
+        document.getElementById('wheelify-coupon-wrap').style.display = 'none';
+        appliedMsg.style.display = 'none';
+        return;
+      }
+
+      resultMsg.textContent = '🎉 You won: ' + (winner.winText || winner.label);
+      document.getElementById('wheelify-coupon-wrap').style.display = 'flex';
+      appliedMsg.style.display = 'none'; // Clear previous error/success
+
+      couponCode.textContent = 'Generating...';
+      var formData = new FormData();
+      formData.append('label', winner.label);
+      formData.append('email', userEmail);
+      formData.append('customerId', currentCustomerId);
+      formData.append('usageLimit', {{ usage_limit | json }});
+      formData.append('expiryMinutes', {{ expiry_minutes | json }});
+
+      fetch('/apps/wheelify', { method: 'POST', body: formData })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.code) {
+          couponCode.textContent = data.code;
+          var msg = '✅ Copy the code and use it at checkout!';
+          {% if expiry_minutes > 0 %}
+            msg += ' <br><span style="font-size: 12px; opacity: 0.8;">Note: This code expires in {{ expiry_minutes }} minutes.</span>';
+          {% endif %}
+          appliedMsg.innerHTML = msg;
+          appliedMsg.style.display = 'block';
+        } else {
+          couponCode.textContent = 'ERROR';
+          if (data.error) {
+             appliedMsg.textContent = '❌ ' + data.error;
+             appliedMsg.style.color = '#ff4d4d';
+             appliedMsg.style.display = 'block';
+          }
+        }
+      })
+      .catch(function(err) {
+        console.error('Discount generation error:', err);
+        couponCode.textContent = 'ERROR';
+      });
     }
-    overlay.classList.add('active'); 
-  });
-  closeBtn.addEventListener('click', function() { overlay.classList.remove('active'); });
-})();
+
+    copyBtn.addEventListener('click', function() {
+      navigator.clipboard.writeText(couponCode.textContent).then(function() {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(function() { copyBtn.textContent = 'Copy'; }, 2000);
+      });
+    });
+
+    trigger.addEventListener('click', function() {
+      var remainingDays = checkCooldown();
+      if (remainingDays) {
+        step1.style.display = 'none';
+        step2.style.display = 'none';
+        resultPanel.style.display = 'none';
+        cooldownPanel.style.display = 'block';
+        cooldownMsg.textContent = 'Wait! You can spin the wheel again after ' + remainingDays + (remainingDays === 1 ? ' day.' : ' days.');
+      } else {
+        cooldownPanel.style.display = 'none';
+        // Normal logic: show step 1 or 2
+        step1.style.display = 'block';
+      }
+      overlay.classList.add('active');
+    });
+    closeBtn.addEventListener('click', function() { overlay.classList.remove('active'); });
+  })();
 </script>
 
 {% schema %}

@@ -118,16 +118,28 @@ export const action = async ({ request }) => {
     }
 
     // --- Action 2: Generate Unique Discount ---
-    const label = formData.get("label") || "10% OFF";
+    const label = formData.get("label") || "";
     const email = formData.get("email") || "Unknown";
     const customerId = formData.get("customerId");
     const usageLimit = parseInt(formData.get("usageLimit")) || 1;
     const expiryMinutes = parseInt(formData.get("expiryMinutes")) || 0;
-    const match = label.match(/(\d+)%/);
-    const percentageValue = match ? parseFloat(match[1]) / 100 : 0.1;
+
+    // Enhanced matching: look for numbers in the label
+    const match = label.match(/(\d+)/);
+    if (!match) {
+        console.log("No numerical value found in label, skipping discount generation for:", label);
+        return data({ error: "This segment does not carry a discount." });
+    }
+
+    const percentageValue = parseFloat(match[1]) / 100;
+    
+    // Safety check: ensure percentage is between 1% and 100%
+    if (percentageValue <= 0 || percentageValue > 1) {
+        return data({ error: "Invalid discount percentage." });
+    }
     
     const uniqueId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const cleanValue = label.replace(/[^0-9]/g, "");
+    const cleanValue = match[1];
     const finalCode = `${cleanValue}PERCENT-${uniqueId}`;
 
     const discountInput = {
