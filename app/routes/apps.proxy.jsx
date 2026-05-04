@@ -125,28 +125,28 @@ export const action = async ({ request }) => {
       try {
         const response = await admin.graphql(
           `#graphql
-          query checkDiscount($code: String!) {
-            codeDiscountNodeByCode(code: $code) {
-              codeDiscount {
-                ... on DiscountCodeBasic {
-                  asyncUsageCount
+          query checkOrderWithDiscount($query: String!) {
+            orders(first: 1, query: $query) {
+              edges {
+                node {
+                  id
                 }
               }
             }
           }
           `,
-          { variables: { code } }
+          { variables: { query: `discount_code:${code}` } }
         );
         const result = await response.json();
         
         if (result.errors) {
-          console.error("GraphQL Error checking discount:", JSON.stringify(result.errors));
+          console.error("GraphQL Error checking orders:", JSON.stringify(result.errors));
           return data({ used: false });
         }
         
-        const usageCount = result.data?.codeDiscountNodeByCode?.codeDiscount?.asyncUsageCount || 0;
+        const hasOrder = result.data?.orders?.edges?.length > 0;
         
-        return data({ used: usageCount > 0 });
+        return data({ used: hasOrder });
       } catch (err) {
         console.error("Check Status Error:", err);
         return data({ used: false });
@@ -182,7 +182,7 @@ export const action = async ({ request }) => {
             value: { percentage: percentageValue },
             items: { all: true }
           },
-          usageLimit: 1 // STRICT: Total 1 use allowed globally
+          usageLimit: parseInt(formData.get("usageLimit")) || 1
         };
 
         if (customerId) {

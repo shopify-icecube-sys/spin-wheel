@@ -807,34 +807,35 @@
       
       timerCountdown.textContent = formatTime(diff);
 
-      // Check if coupon was already used (Asynchronously via backend AND cart state)
+      // Check backend AND cart status
       var formData = new FormData();
       formData.append('action', 'check_coupon_status');
       formData.append('code', code);
 
       var checkBackend = fetch('/apps/wheelify', { method: 'POST', body: formData }).then(function(r) { return r.json(); }).catch(function(){ return { used: false }; });
-      var checkCart = fetch((window.Shopify && window.Shopify.routes ? window.Shopify.routes.root : '/') + 'cart.js').then(function(r) { return r.json(); }).catch(function(){ return { item_count: 0 }; });
+      var checkCart = fetch((window.Shopify && window.Shopify.routes ? window.Shopify.routes.root : '/') + 'cart.js').then(function(r) { return r.json(); }).catch(function(){ return null; });
 
       Promise.all([checkBackend, checkCart])
       .then(function(results) {
         var data = results[0];
-        var cart = results[1];
         
-        var hadItems = localStorage.getItem('wheelify_had_items') === 'true';
         var isUsed = data && data.used;
 
-        // If cart currently has items, remember it
-        if (cart && cart.item_count > 0) {
-          localStorage.setItem('wheelify_had_items', 'true');
-        }
-
-        // If backend confirms usage, OR if cart had items but is now empty (Checkout completed)
-        if (isUsed || (hadItems && cart && cart.item_count === 0)) {
+        if (isUsed) {
           if (timerInterval) clearInterval(timerInterval);
+          
+          // Clear storage immediately so it never shows again on next page loads or refreshes
+          localStorage.removeItem('wheelify_coupon_code');
+          localStorage.removeItem('wheelify_coupon_expiry');
+          localStorage.removeItem('wheelify_coupon_label');
+
           stickyTimer.innerHTML = '🎉 Order Confirmed! Your coupon <strong>' + code + '</strong> was successfully used.';
           stickyTimer.style.background = '#005f2c'; // Success green
-          localStorage.removeItem('wheelify_had_items');
-          setTimeout(hideStickyTimer, 5000);
+          
+          setTimeout(function() {
+            stickyTimer.classList.remove('active');
+            setTimeout(function() { stickyTimer.style.display = 'none'; }, 400);
+          }, 5000); // Hide visually after 5 seconds
         }
       })
       .catch(function(err) {
@@ -883,6 +884,11 @@
       overlay.classList.add('active');
     });
     closeBtn.addEventListener('click', function() { overlay.classList.remove('active'); });
+
+    // --- Initial Check to Hide Trigger ---
+    if (checkCooldown()) {
+      trigger.style.display = 'none';
+    }
   })();
 </script>
 
