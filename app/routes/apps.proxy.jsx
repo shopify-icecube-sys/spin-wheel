@@ -117,6 +117,42 @@ export const action = async ({ request }) => {
       return data({ success: true, customerId: customer?.id });
     }
 
+    // --- Action 4: Check Coupon Status ---
+    if (actionType === "check_coupon_status") {
+      const code = formData.get("code");
+      if (!code) return data({ used: false });
+
+      try {
+        const response = await admin.graphql(
+          `#graphql
+          query checkDiscount($code: String!) {
+            codeDiscountNodeByCode(code: $code) {
+              codeDiscount {
+                ... on DiscountCodeBasic {
+                  asyncUsageCount
+                }
+              }
+            }
+          }
+          `,
+          { variables: { code } }
+        );
+        const result = await response.json();
+        
+        if (result.errors) {
+          console.error("GraphQL Error checking discount:", JSON.stringify(result.errors));
+          return data({ used: false });
+        }
+        
+        const usageCount = result.data?.codeDiscountNodeByCode?.codeDiscount?.asyncUsageCount || 0;
+        
+        return data({ used: usageCount > 0 });
+      } catch (err) {
+        console.error("Check Status Error:", err);
+        return data({ used: false });
+      }
+    }
+
     // --- Action 2: Process Spin Result & Record Lead ---
     const label = formData.get("label") || "";
     const customerId = formData.get("customerId");

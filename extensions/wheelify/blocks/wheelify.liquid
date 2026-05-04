@@ -124,6 +124,15 @@
       </div>
     </div>
   </div>
+
+  <!-- Sticky Timer Bar -->
+  <div id="wheelify-sticky-timer" style="display:none;">
+    <div id="wheelify-timer-content">
+      🎉 Use code <strong id="wheelify-timer-code"></strong> for <strong id="wheelify-timer-discount"></strong> OFF! Expires in <strong id="wheelify-timer-countdown"></strong>
+    </div>
+    <button id="wheelify-timer-copy">Copy Code</button>
+  </div>
+
 </div>
 
 <style>
@@ -131,6 +140,100 @@
 
   #wheelify-root {
     font-family: 'Outfit', sans-serif;
+  }
+
+  #wheelify-sticky-timer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #ff051e;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 12px 20px;
+    z-index: 999999;
+    box-shadow: 0 -4px 15px rgba(0,0,0,0.15);
+    font-size: 16px;
+    gap: 16px;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  
+  #wheelify-sticky-timer.active {
+    transform: translateY(0);
+  }
+
+  #wheelify-timer-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #wheelify-timer-countdown {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 18px;
+    letter-spacing: 1px;
+  }
+
+  #wheelify-timer-code {
+    background: #fff;
+    color: #ff051e;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-weight: 800;
+  }
+
+  #wheelify-timer-copy {
+    background: #fff;
+    color: #ff051e;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  #wheelify-timer-copy:active {
+    transform: scale(0.95);
+  }
+
+  #wheelify-timer-close {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 20px;
+    cursor: pointer;
+    position: absolute;
+    right: 20px;
+  }
+
+  #wheelify-timer-close:hover {
+    color: #fff;
+  }
+
+  @media (max-width: 600px) {
+    #wheelify-sticky-timer {
+      flex-direction: column;
+      padding: 16px 12px;
+      font-size: 14px;
+      text-align: center;
+    }
+    #wheelify-timer-content {
+      flex-direction: column;
+      gap: 8px;
+    }
+    #wheelify-timer-close {
+      top: 8px;
+      right: 12px;
+    }
   }
 
   #wheelify-trigger {
@@ -629,6 +732,13 @@
           var msg = '✅ Copy the code and use it at checkout!';
           {% if expiry_minutes > 0 %}
             msg += ' <br><span style="font-size: 12px; opacity: 0.8;">Note: This code expires in {{ expiry_minutes }} minutes.</span>';
+            
+            // Setup Sticky Timer
+            var expiryMs = Date.now() + ({{ expiry_minutes }} * 60000);
+            localStorage.setItem('wheelify_coupon_code', data.code);
+            localStorage.setItem('wheelify_coupon_expiry', expiryMs.toString());
+            localStorage.setItem('wheelify_coupon_label', winner.label);
+            checkStickyTimer();
           {% endif %}
           appliedMsg.innerHTML = msg;
           appliedMsg.style.display = 'block';
@@ -647,6 +757,108 @@
         if (isWin) couponCode.textContent = 'ERROR';
       });
     }
+
+    // --- Sticky Timer Logic ---
+    var stickyTimer = document.getElementById('wheelify-sticky-timer');
+    var timerCountdown = document.getElementById('wheelify-timer-countdown');
+    var timerCode = document.getElementById('wheelify-timer-code');
+    var timerDiscount = document.getElementById('wheelify-timer-discount');
+    var timerCopy = document.getElementById('wheelify-timer-copy');
+    var timerInterval = null;
+
+    function formatTime(ms) {
+      var totalSec = Math.floor(ms / 1000);
+      var m = Math.floor(totalSec / 60);
+      var s = totalSec % 60;
+      return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function checkStickyTimer() {
+      var code = localStorage.getItem('wheelify_coupon_code');
+      var expiry = localStorage.getItem('wheelify_coupon_expiry');
+      var label = localStorage.getItem('wheelify_coupon_label');
+
+      if (!code || !expiry || !label) return;
+
+      var diff = parseInt(expiry) - Date.now();
+      if (diff <= 0) {
+        hideStickyTimer();
+        return;
+      }
+
+      // SHOW TIMER IMMEDIATELY
+      timerCode.textContent = code;
+      var match = label.match(/(\d+)\s*(?:%|PERCENT|OFF)/i);
+      timerDiscount.textContent = match ? match[1] + '%' : label;
+
+      stickyTimer.style.display = 'flex';
+      setTimeout(function() { stickyTimer.classList.add('active'); }, 50);
+
+      if (timerInterval) clearInterval(timerInterval);
+      
+      timerInterval = setInterval(function() {
+        var newDiff = parseInt(expiry) - Date.now();
+        if (newDiff <= 0) {
+          hideStickyTimer();
+        } else {
+          timerCountdown.textContent = formatTime(newDiff);
+        }
+      }, 1000);
+      
+      timerCountdown.textContent = formatTime(diff);
+
+      // Check if coupon was already used (Asynchronously via backend AND cart state)
+      var formData = new FormData();
+      formData.append('action', 'check_coupon_status');
+      formData.append('code', code);
+
+      var checkBackend = fetch('/apps/wheelify', { method: 'POST', body: formData }).then(function(r) { return r.json(); }).catch(function(){ return { used: false }; });
+      var checkCart = fetch((window.Shopify && window.Shopify.routes ? window.Shopify.routes.root : '/') + 'cart.js').then(function(r) { return r.json(); }).catch(function(){ return { item_count: 0 }; });
+
+      Promise.all([checkBackend, checkCart])
+      .then(function(results) {
+        var data = results[0];
+        var cart = results[1];
+        
+        var hadItems = localStorage.getItem('wheelify_had_items') === 'true';
+        var isUsed = data && data.used;
+
+        // If cart currently has items, remember it
+        if (cart && cart.item_count > 0) {
+          localStorage.setItem('wheelify_had_items', 'true');
+        }
+
+        // If backend confirms usage, OR if cart had items but is now empty (Checkout completed)
+        if (isUsed || (hadItems && cart && cart.item_count === 0)) {
+          if (timerInterval) clearInterval(timerInterval);
+          stickyTimer.innerHTML = '🎉 Order Confirmed! Your coupon <strong>' + code + '</strong> was successfully used.';
+          stickyTimer.style.background = '#005f2c'; // Success green
+          localStorage.removeItem('wheelify_had_items');
+          setTimeout(hideStickyTimer, 5000);
+        }
+      })
+      .catch(function(err) {
+        console.error("Timer check failed:", err);
+      });
+    }
+
+    function hideStickyTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      stickyTimer.classList.remove('active');
+      setTimeout(function() { stickyTimer.style.display = 'none'; }, 400);
+      localStorage.removeItem('wheelify_coupon_code');
+      localStorage.removeItem('wheelify_coupon_expiry');
+      localStorage.removeItem('wheelify_coupon_label');
+    }
+
+    timerCopy.addEventListener('click', function() {
+      navigator.clipboard.writeText(timerCode.textContent).then(function() {
+        timerCopy.textContent = 'Copied!';
+        setTimeout(function() { timerCopy.textContent = 'Copy Code'; }, 2000);
+      });
+    });
+
+    checkStickyTimer(); // Run on page load
 
     copyBtn.addEventListener('click', function() {
       navigator.clipboard.writeText(couponCode.textContent).then(function() {
