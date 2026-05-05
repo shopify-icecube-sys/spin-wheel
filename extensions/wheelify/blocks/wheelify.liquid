@@ -28,9 +28,7 @@
   {%- if wheel_settings.formDisclaimer != null -%}
     {%- assign form_disclaimer = wheel_settings.formDisclaimer -%}
   {%- endif -%}
-  {%- if wheel_settings.discountUsageLimit != null -%}
-    {%- assign usage_limit = wheel_settings.discountUsageLimit -%}
-  {%- endif -%}
+
   {%- if wheel_settings.customCooldownDays != null -%}
     {%- assign custom_cooldown = wheel_settings.customCooldownDays -%}
   {%- endif -%}
@@ -611,12 +609,12 @@
       submitBtn.textContent = 'Processing...';
       errorMsg.style.display = 'none';
 
-      var formData = new FormData();
+      var formData = new URLSearchParams();
       formData.append('action', 'create_customer');
       formData.append('email', email);
       formData.append('cooldownDays', {{ custom_cooldown | json }});
 
-      fetch('/apps/wheelify', { method: 'POST', body: formData })
+      fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.success) {
@@ -716,15 +714,15 @@
       
       appliedMsg.style.display = 'none';
 
-      var formData = new FormData();
+      var formData = new URLSearchParams();
       formData.append('label', winner.label);
       formData.append('email', userEmail);
       formData.append('customerId', currentCustomerId);
-      formData.append('usageLimit', {{ usage_limit | json }});
+
       formData.append('expiryMinutes', {{ expiry_minutes | json }});
       formData.append('isWin', isWin ? 'true' : 'false'); // Tell server if it was a win
 
-      fetch('/apps/wheelify', { method: 'POST', body: formData })
+      fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.code) {
@@ -807,44 +805,66 @@
       
       timerCountdown.textContent = formatTime(diff);
 
-      // Check backend AND cart status
-      var formData = new FormData();
-      formData.append('action', 'check_coupon_status');
-      formData.append('code', code);
-
-      var checkBackend = fetch('/apps/wheelify', { method: 'POST', body: formData }).then(function(r) { return r.json(); }).catch(function(){ return { used: false }; });
-      var checkCart = fetch((window.Shopify && window.Shopify.routes ? window.Shopify.routes.root : '/') + 'cart.js').then(function(r) { return r.json(); }).catch(function(){ return null; });
-
-      Promise.all([checkBackend, checkCart])
-      .then(function(results) {
-        var data = results[0];
-        
-        var isUsed = data && data.used;
-
-        if (isUsed) {
-          if (timerInterval) clearInterval(timerInterval);
-          
-          // Clear storage immediately so it never shows again on next page loads or refreshes
-          localStorage.removeItem('wheelify_coupon_code');
-          localStorage.removeItem('wheelify_coupon_expiry');
-          localStorage.removeItem('wheelify_coupon_label');
-
-          stickyTimer.innerHTML = '🎉 Order Confirmed! Your coupon <strong>' + code + '</strong> was successfully used.';
-          stickyTimer.style.background = '#005f2c'; // Success green
-          
-          setTimeout(function() {
-            stickyTimer.classList.remove('active');
-            setTimeout(function() { stickyTimer.style.display = 'none'; }, 400);
-          }, 5000); // Hide visually after 5 seconds
+      var statusPollInterval = null;
+      function performStatusCheck() {
+        var activeCode = localStorage.getItem('wheelify_coupon_code');
+        if (!activeCode) {
+          if (statusPollInterval) clearInterval(statusPollInterval);
+          return;
         }
-      })
-      .catch(function(err) {
-        console.error("Timer check failed:", err);
-      });
+
+        var formData = new URLSearchParams();
+        formData.append('action', 'check_coupon_status');
+        formData.append('code', activeCode);
+
+        fetch('/apps/wheelify', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+          body: formData 
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data && data.used) {
+            if (timerInterval) clearInterval(timerInterval);
+            if (statusPollInterval) clearInterval(statusPollInterval);
+            
+            localStorage.removeItem('wheelify_coupon_code');
+            localStorage.removeItem('wheelify_coupon_expiry');
+            localStorage.removeItem('wheelify_coupon_label');
+
+            stickyTimer.innerHTML = '🎉 Order Confirmed! Your coupon <strong>' + activeCode + '</strong> was successfully used.';
+            stickyTimer.style.background = '#005f2c'; 
+            
+            setTimeout(function() {
+              stickyTimer.classList.remove('active');
+              setTimeout(function() { stickyTimer.style.display = 'none'; }, 400);
+            }, 5000); 
+          }
+        })
+        .catch(function(err) {
+          console.error("Timer check failed:", err);
+        });
+      }
+
+      // Initial check and start polling
+      performStatusCheck();
+      statusPollInterval = setInterval(performStatusCheck, 3000);
+
+      // Store in a variable accessible to hideStickyTimer
+      window.wheelifyPollInterval = statusPollInterval;
     }
 
     function hideStickyTimer() {
+      var code = localStorage.getItem('wheelify_coupon_code');
+      if (code) {
+        var formData = new URLSearchParams();
+        formData.append('action', 'expire_coupon');
+        formData.append('code', code);
+        fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData });
+      }
+
       if (timerInterval) clearInterval(timerInterval);
+      if (window.wheelifyPollInterval) clearInterval(window.wheelifyPollInterval);
       stickyTimer.classList.remove('active');
       setTimeout(function() { stickyTimer.style.display = 'none'; }, 400);
       localStorage.removeItem('wheelify_coupon_code');
@@ -884,6 +904,14 @@
       overlay.classList.add('active');
     });
     closeBtn.addEventListener('click', function() { overlay.classList.remove('active'); });
+
+    // --- Background Cleanup on Page Load ---
+    (function triggerBackgroundCleanup() {
+      var formData = new URLSearchParams();
+      formData.append('action', 'cleanup_expired');
+      fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
+      .catch(function(err) { console.error("Cleanup trigger failed:", err); });
+    })();
 
     // --- Initial Check to Hide Trigger ---
     if (checkCooldown()) {

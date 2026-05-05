@@ -1,0 +1,6 @@
+// This is a scratch script to test Shopify GraphQL search
+const shop = "icd-test-gmp9ixtp.myshopify.com";
+const code = "10PERCENT-XGM05A";
+
+// I can't run this directly as I need a session.
+// I'll just rely on improving the proxy code.

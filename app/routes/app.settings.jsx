@@ -159,17 +159,7 @@ export default function Settings() {
           <h3 style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', marginTop: 0 }}>Lead Generation</h3>
           <p style={{ color: '#666', fontSize: '14px', marginBottom: '0' }}>Email collection is enabled by default to create Shopify customer records before every spin.</p>
 
-          <div style={{ borderTop: '1px solid #eee', paddingTop: '20px', marginTop: '20px' }}>
-            <label style={labelStyle}>Discount Usage Limit</label>
-            <input
-              type="number"
-              min="1"
-              value={settings.discountUsageLimit}
-              onChange={(e) => handleChange('discountUsageLimit', parseInt(e.target.value) || 1)}
-              style={{ ...inputStyle, maxWidth: '120px' }}
-            />
-            <p style={hintStyle}>How many times each generated coupon code can be used in total.</p>
-          </div>
+
 
           <div style={{ borderTop: '1px solid #eee', paddingTop: '20px', marginTop: '20px' }}>
             <label style={labelStyle}>Coupon Expiry (Minutes)</label>

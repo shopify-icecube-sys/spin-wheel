@@ -118,38 +118,120 @@ export const action = async ({ request }) => {
     }
 
     // --- Action 4: Check Coupon Status ---
-    if (actionType === "check_coupon_status") {
-      const code = formData.get("code");
-      if (!code) return data({ used: false });
-
+    if (actionType === "check_coupon_status" || actionType === "expire_coupon" || actionType === "cleanup_expired") {
       try {
-        const response = await admin.graphql(
-          `#graphql
-          query checkOrderWithDiscount($query: String!) {
-            orders(first: 1, query: $query) {
-              edges {
-                node {
-                  id
+        const appInstRes = await admin.graphql(`
+          query { currentAppInstallation { metafield(namespace: "wheelify", key: "settings") { value } } }
+        `);
+        const appInstJson = await appInstRes.json();
+        const settings = JSON.parse(appInstJson.data?.currentAppInstallation?.metafield?.value || '{}');
+        const expiryMinutes = settings.couponExpiryMinutes || 60;
+
+        // Helper function to delete a discount by its code
+        const deleteDiscountByCode = async (targetCode) => {
+          if (!targetCode) return;
+          console.log(`Attempting to delete coupon: ${targetCode}`);
+          
+          // Try multiple search strategies
+          const searchQueries = [
+            `code:'${targetCode}'`,
+            `title:'Spin Win ${targetCode}'`
+          ];
+
+          for (const query of searchQueries) {
+            const findRes = await admin.graphql(
+              `#graphql
+              query findDiscount($query: String!) {
+                codeDiscountNodes(first: 1, query: $query) {
+                  nodes { id }
                 }
+              }
+              `,
+              { variables: { query } }
+            );
+            const findJson = await findRes.json();
+            const discountId = findJson.data?.codeDiscountNodes?.nodes[0]?.id;
+
+            if (discountId) {
+              const delRes = await admin.graphql(
+                `#graphql
+                mutation deleteDiscount($id: ID!) {
+                  discountCodeBasicDelete(id: $id) {
+                    deletedDiscountId
+                    userErrors { field message }
+                  }
+                }
+                `,
+                { variables: { id: discountId } }
+              );
+              const delJson = await delRes.json();
+              if (delJson.data?.discountCodeBasicDelete?.deletedDiscountId) {
+                console.log(`Successfully deleted coupon: ${targetCode}`);
+                return true;
               }
             }
           }
-          `,
-          { variables: { query: `discount_code:${code}` } }
-        );
-        const result = await response.json();
-        
-        if (result.errors) {
-          console.error("GraphQL Error checking orders:", JSON.stringify(result.errors));
-          return data({ used: false });
+          return false;
+        };
+
+        // --- Action: cleanup_expired ---
+        if (actionType === "cleanup_expired") {
+          if (expiryMinutes <= 0) return data({ success: true });
+          const threshold = new Date(Date.now() - (expiryMinutes * 60 * 1000));
+          const expiredLeads = await db.lead.findMany({
+            where: {
+              shop: session.shop,
+              createdAt: { lt: threshold }
+            },
+            take: 10,
+            orderBy: { createdAt: 'asc' }
+          });
+
+          for (const lead of expiredLeads) {
+            await deleteDiscountByCode(lead.couponCode);
+          }
+          return data({ success: true });
         }
-        
-        const hasOrder = result.data?.orders?.edges?.length > 0;
+
+        const code = formData.get("code");
+        if (!code) return data({ used: false });
+
+        // --- Action: check_coupon_status ---
+        let hasOrder = false;
+        if (actionType === "check_coupon_status") {
+          const orderRes = await admin.graphql(
+            `#graphql
+            query checkOrderWithDiscount($query: String!) {
+              orders(first: 1, query: $query) {
+                edges { node { id } }
+              }
+            }
+            `,
+            { variables: { query: `discount_code:${code}` } }
+          );
+          const orderJson = await orderRes.json();
+          hasOrder = orderJson.data?.orders?.edges?.length > 0;
+        }
+
+        // --- Action: expire_coupon or self-healing check ---
+        const lead = await db.lead.findFirst({
+          where: { couponCode: code, shop: session.shop }
+        });
+
+        if (lead || actionType === "expire_coupon") {
+          const createdAt = lead ? new Date(lead.createdAt).getTime() : 0;
+          const isExpired = lead && expiryMinutes > 0 && (Date.now() - createdAt > expiryMinutes * 60 * 1000);
+
+          if (isExpired || actionType === "expire_coupon") {
+            await deleteDiscountByCode(code);
+            if (isExpired) return data({ used: false, expired: true });
+          }
+        }
         
         return data({ used: hasOrder });
       } catch (err) {
-        console.error("Check Status Error:", err);
-        return data({ used: false });
+        console.error("Coupon Proxy Error:", err);
+        return data({ used: false, error: err.message });
       }
     }
 
@@ -172,23 +254,47 @@ export const action = async ({ request }) => {
         const cleanValue = match[1];
         finalCode = `${cleanValue}PERCENT-${uniqueId}`;
 
+        const expiryMinutes = parseInt(formData.get("expiryMinutes")) || 0;
+        
+        let effectiveCustomerId = customerId;
+        // Fallback: If customerId is missing or invalid, try to find the customer by email
+        if (!effectiveCustomerId || !effectiveCustomerId.includes("Customer")) {
+          try {
+            const searchRes = await admin.graphql(
+              `#graphql
+              query($query: String!) {
+                customers(first: 1, query: $query) {
+                  nodes { id }
+                }
+              }
+              `,
+              { variables: { query: `email:${email}` } }
+            );
+            const searchData = await searchRes.json();
+            effectiveCustomerId = searchData.data?.customers?.nodes[0]?.id;
+          } catch (e) {
+            console.error("Fallback Customer Search Error:", e);
+          }
+        }
+
         const discountInput = {
           title: `Spin Win ${finalCode}`,
           code: finalCode,
           startsAt: new Date().toISOString(),
-          customerSelection: { all: true },
+          customerSelection: effectiveCustomerId ? {
+            customers: { add: [effectiveCustomerId] }
+          } : { all: true },
           appliesOncePerCustomer: true,
           customerGets: {
             value: { percentage: percentageValue },
             items: { all: true }
           },
-          usageLimit: parseInt(formData.get("usageLimit")) || 1
+          usageLimit: 1
         };
 
-        if (customerId) {
-          discountInput.customerSelection = {
-            customers: { add: [customerId] }
-          };
+        if (expiryMinutes > 0) {
+          const endsAt = new Date(Date.now() + (expiryMinutes * 60 * 1000));
+          discountInput.endsAt = endsAt.toISOString();
         }
 
         const response = await admin.graphql(
