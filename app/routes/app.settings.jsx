@@ -80,6 +80,7 @@ const DEFAULT_SETTINGS = {
   discountUsageLimit: 1,
   customCooldownDays: 30,
   couponExpiryMinutes: 60,
+  triggerColor: "#ff4d6d",
 };
 
 export default function Settings() {
@@ -193,10 +194,31 @@ export default function Settings() {
           <p style={hintStyle}>Visitors will see a warning message in the popup if they try to spin before this period ends.</p>
         </div>
 
-        {/* Popup Position */}
+        {/* Popup Position & Theme */}
         <div style={cardStyle}>
-          <h3 style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', marginTop: 0 }}>Trigger Button Position</h3>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>Choose where the floating "Spin & Win" button appears on the storefront.</p>
+          <h3 style={{ fontWeight: '700', fontSize: '16px', marginBottom: '6px', marginTop: 0 }}>Appearance & Position</h3>
+          <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>Customize the look and location of your "Spin & Win" trigger.</p>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <label style={labelStyle}>Trigger Button Color</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <input 
+                type="color" 
+                value={settings.triggerColor || settings.themeColor} 
+                onChange={(e) => handleChange('triggerColor', e.target.value)}
+                style={{ width: '50px', height: '40px', padding: '0', border: 'none', cursor: 'pointer', backgroundColor: 'transparent' }}
+              />
+              <input 
+                type="text" 
+                value={settings.triggerColor || settings.themeColor} 
+                onChange={(e) => handleChange('triggerColor', e.target.value)}
+                style={{ ...inputStyle, maxWidth: '120px' }}
+              />
+            </div>
+            <p style={hintStyle}>This color will ONLY be applied to the floating "Spin & Win" button on your storefront.</p>
+          </div>
+
+          <label style={labelStyle}>Trigger Button Position</label>
           <div style={{ display: 'flex', gap: '12px' }}>
             {[
               { value: 'bottom-right', label: 'Bottom Right' },

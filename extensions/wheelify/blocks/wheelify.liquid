@@ -12,6 +12,9 @@
 {%- assign custom_cooldown = 30 -%}
 {%- assign expiry_minutes = 60 -%}
 
+{%- assign trigger_bg_color = '#ff4d6d' -%}
+{%- assign trigger_bg_color_dark = '#c9184a' -%}
+
 {%- if wheel_settings -%}
   {%- if wheel_settings.popupPosition != null -%}{%- assign popup_pos = wheel_settings.popupPosition -%}{%- endif -%}
   {%- if wheel_settings.triggerText != null -%}{%- assign trigger_text = wheel_settings.triggerText -%}{%- endif -%}
@@ -34,6 +37,13 @@
   {%- endif -%}
   {%- if wheel_settings.couponExpiryMinutes != null -%}
     {%- assign expiry_minutes = wheel_settings.couponExpiryMinutes -%}
+  {%- endif -%}
+  {%- if wheel_settings.triggerColor != null -%}
+    {%- assign trigger_bg_color = wheel_settings.triggerColor -%}
+    {%- assign trigger_bg_color_dark = trigger_bg_color -%} 
+  {%- elsif wheel_settings.themeColor != null -%}
+    {%- assign trigger_bg_color = wheel_settings.themeColor -%}
+    {%- assign trigger_bg_color_dark = trigger_bg_color -%}
   {%- endif -%}
 {%- endif -%}
 
@@ -239,7 +249,7 @@
     bottom: 24px;
     {%- if popup_pos == 'bottom-left' -%}left: 24px;{%- else -%}right: 24px;{%- endif -%}
     z-index: 9998;
-    background: linear-gradient(135deg, #ff4d6d, #c9184a);
+    background: linear-gradient(135deg, {{ trigger_bg_color }}, {{ trigger_bg_color_dark }});
     color: white;
     border: none;
     border-radius: 50px;
@@ -250,15 +260,15 @@
     cursor: pointer;
     font-size: 15px;
     font-weight: 700;
-    box-shadow: 0 8px 24px rgba(201, 24, 74, 0.4);
+    box-shadow: 0 8px 24px {{ trigger_bg_color | append: '66' }};
     animation: wheelifyPulse 2s infinite;
     transition: transform 0.2s;
   }
   #wheelify-trigger:hover { transform: translateY(-2px); }
 
   @keyframes wheelifyPulse {
-    0%, 100% { transform: scale(1); box-shadow: 0 8px 24px rgba(201, 24, 74, 0.4); }
-    50% { transform: scale(1.05); box-shadow: 0 12px 32px rgba(201, 24, 74, 0.6); }
+    0%, 100% { transform: scale(1); box-shadow: 0 8px 24px {{ trigger_bg_color | append: '66' }}; }
+    50% { transform: scale(1.05); box-shadow: 0 12px 32px {{ trigger_bg_color | append: '99' }}; }
   }
 
   #wheelify-overlay {
@@ -343,7 +353,7 @@
     font-size: 42px;
     font-weight: 800;
     margin: 0 0 16px;
-    color: #ff4d6d;
+    color: #000;
     line-height: 1.1;
   }
 
@@ -370,11 +380,11 @@
     transition: border-color 0.2s;
     outline: none;
   }
-  #wheelify-email:focus { border-color: #ff4d6d; }
+  #wheelify-email:focus { border-color: #000; }
 
   #wheelify-submit-btn, #wheelify-spin-btn {
     width: 100%;
-    background: #ff4d6d;
+    background: #000;
     color: white;
     border: none;
     padding: 16px 32px;
@@ -383,9 +393,9 @@
     font-weight: 800;
     cursor: pointer;
     transition: all 0.2s;
-    box-shadow: 0 8px 20px rgba(255, 77, 109, 0.3);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
   }
-  #wheelify-submit-btn:hover, #wheelify-spin-btn:hover { background: #c9184a; transform: translateY(-2px); }
+  #wheelify-submit-btn:hover, #wheelify-spin-btn:hover { background: #333; transform: translateY(-2px); }
   #wheelify-submit-btn:disabled, #wheelify-spin-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
   #wheelify-disclaimer {
@@ -410,7 +420,7 @@
     width: 0; height: 0;
     border-left: 15px solid transparent;
     border-right: 15px solid transparent;
-    border-top: 30px solid #ff4d6d;
+    border-top: 30px solid #000;
     z-index: 10;
     filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
   }
@@ -433,18 +443,18 @@
   }
   #wheelify-hub::after {
     content: '★';
-    color: #ff4d6d;
+    color: #000;
     font-size: 20px;
   }
 
   #wheelify-result {
-    background: #fdf2f4;
+    background: #f9f9f9;
     border-radius: 16px;
     padding: 24px;
     width: 100%;
     margin-top: 20px;
     box-sizing: border-box;
-    border: 2px dashed #ff4d6d;
+    border: 2px dashed #000;
   }
   #wheelify-result-msg { font-size: 18px; font-weight: 700; margin: 0 0 16px; color: #333; }
   #wheelify-coupon-wrap {
