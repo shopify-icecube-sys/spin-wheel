@@ -625,7 +625,15 @@
       formData.append('cooldownDays', {{ custom_cooldown | json }});
 
       fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
-      .then(function(res) { return res.json(); })
+      .then(function(res) { 
+        if (!res.ok) {
+          if (res.status === 504 || res.status === 502) {
+            throw new Error('Server timeout. Please try again in a moment.');
+          }
+          return res.text().then(function(text) { throw new Error('Server error (' + res.status + ')'); });
+        }
+        return res.json(); 
+      })
       .then(function(data) {
         if (data.success) {
           userEmail = email;
@@ -640,8 +648,8 @@
         }
       })
       .catch(function(err) {
-        console.error(err);
-        errorMsg.textContent = 'Connection error. Please try again.';
+        console.error('Lead Capture Error:', err);
+        errorMsg.textContent = err.message.includes('fetch') ? 'Connection error. Please check your internet.' : err.message;
         errorMsg.style.display = 'block';
         submitBtn.disabled = false;
         submitBtn.textContent = {{ form_btn_text | json }};
@@ -733,7 +741,10 @@
       formData.append('isWin', isWin ? 'true' : 'false'); // Tell server if it was a win
 
       fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
-      .then(function(res) { return res.json(); })
+      .then(function(res) { 
+        if (!res.ok) throw new Error('Server error during spin record.');
+        return res.json(); 
+      })
       .then(function(data) {
         if (data.code) {
           couponCode.textContent = data.code;
@@ -761,8 +772,12 @@
         }
       })
       .catch(function(err) {
-        console.error('Server sync error:', err);
-        if (isWin) couponCode.textContent = 'ERROR';
+        console.error('Spin Result Sync Error:', err);
+        if (isWin) {
+          couponCode.textContent = 'ERROR';
+          appliedMsg.textContent = '⚠️ Result not saved, but you won! Please take a screenshot.';
+          appliedMsg.style.display = 'block';
+        }
       });
     }
 
@@ -858,7 +873,7 @@
 
       // Initial check and start polling
       performStatusCheck();
-      statusPollInterval = setInterval(performStatusCheck, 3000);
+      statusPollInterval = setInterval(performStatusCheck, 15000);
 
       // Store in a variable accessible to hideStickyTimer
       window.wheelifyPollInterval = statusPollInterval;
@@ -899,6 +914,12 @@
     });
 
     trigger.addEventListener('click', function() {
+      // --- Trigger Background Cleanup only when someone opens the wheel ---
+      var cleanupFormData = new URLSearchParams();
+      cleanupFormData.append('action', 'cleanup_expired');
+      fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: cleanupFormData })
+      .catch(function(err) { console.error("Cleanup trigger failed:", err); });
+
       var remainingDays = checkCooldown();
       if (remainingDays) {
         step1.style.display = 'none';
@@ -915,13 +936,6 @@
     });
     closeBtn.addEventListener('click', function() { overlay.classList.remove('active'); });
 
-    // --- Background Cleanup on Page Load ---
-    (function triggerBackgroundCleanup() {
-      var formData = new URLSearchParams();
-      formData.append('action', 'cleanup_expired');
-      fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
-      .catch(function(err) { console.error("Cleanup trigger failed:", err); });
-    })();
 
     // --- Initial Check to Hide Trigger ---
     if (checkCooldown()) {

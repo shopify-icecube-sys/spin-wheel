@@ -40,4 +40,8 @@ model Lead {
   couponCode  String
   prize       String
   createdAt   DateTime @default(now())
+
+  @@index([shop])
+  @@index([email])
+  @@index([shop, email])
 }
