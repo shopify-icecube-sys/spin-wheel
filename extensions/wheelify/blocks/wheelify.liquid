@@ -872,7 +872,7 @@
 
       // Initial check and start polling
       performStatusCheck();
-      statusPollInterval = setInterval(performStatusCheck, 15000);
+      statusPollInterval = setInterval(performStatusCheck, 5000);
 
       // Store in a variable accessible to hideStickyTimer
       window.wheelifyPollInterval = statusPollInterval;
