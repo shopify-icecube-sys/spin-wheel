@@ -8,7 +8,6 @@
 {%- assign form_btn_text = 'TRY YOUR LUCK!' -%}
 {%- assign spin_btn_text = '🎯 Spin to Win!' -%}
 {%- assign form_disclaimer = '' -%}
-{%- assign usage_limit = 1 -%}
 {%- assign custom_cooldown = 30 -%}
 {%- assign expiry_minutes = 60 -%}
 
@@ -40,7 +39,7 @@
   {%- endif -%}
   {%- if wheel_settings.triggerColor != null -%}
     {%- assign trigger_bg_color = wheel_settings.triggerColor -%}
-    {%- assign trigger_bg_color_dark = trigger_bg_color -%} 
+    {%- assign trigger_bg_color_dark = trigger_bg_color -%}
   {%- elsif wheel_settings.themeColor != null -%}
     {%- assign trigger_bg_color = wheel_settings.themeColor -%}
     {%- assign trigger_bg_color_dark = trigger_bg_color -%}
@@ -136,11 +135,11 @@
   <!-- Sticky Timer Bar -->
   <div id="wheelify-sticky-timer" style="display:none;">
     <div id="wheelify-timer-content">
-      🎉 Use code <strong id="wheelify-timer-code"></strong> for <strong id="wheelify-timer-discount"></strong> OFF! Expires in <strong id="wheelify-timer-countdown"></strong>
+      🎉 Use code <strong id="wheelify-timer-code"></strong> for <strong id="wheelify-timer-discount"></strong> OFF!
+      Expires in <strong id="wheelify-timer-countdown"></strong>
     </div>
     <button id="wheelify-timer-copy">Copy Code</button>
   </div>
-
 </div>
 
 <style>
@@ -168,7 +167,7 @@
     transform: translateY(100%);
     transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
-  
+
   #wheelify-sticky-timer.active {
     transform: translateY(0);
   }
@@ -625,14 +624,14 @@
       formData.append('cooldownDays', {{ custom_cooldown | json }});
 
       fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
-      .then(function(res) { 
+      .then(function(res) {
         if (!res.ok) {
           if (res.status === 504 || res.status === 502) {
             throw new Error('Server timeout. Please try again in a moment.');
           }
           return res.text().then(function(text) { throw new Error('Server error (' + res.status + ')'); });
         }
-        return res.json(); 
+        return res.json();
       })
       .then(function(data) {
         if (data.success) {
@@ -729,7 +728,7 @@
         resultMsg.textContent = winner.winText || winner.label || 'Better luck next time!';
         document.getElementById('wheelify-coupon-wrap').style.display = 'none';
       }
-      
+
       appliedMsg.style.display = 'none';
 
       var formData = new URLSearchParams();
@@ -741,9 +740,9 @@
       formData.append('isWin', isWin ? 'true' : 'false'); // Tell server if it was a win
 
       fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
-      .then(function(res) { 
+      .then(function(res) {
         if (!res.ok) throw new Error('Server error during spin record.');
-        return res.json(); 
+        return res.json();
       })
       .then(function(data) {
         if (data.code) {
@@ -751,7 +750,7 @@
           var msg = '✅ Copy the code and use it at checkout!';
           {% if expiry_minutes > 0 %}
             msg += ' <br><span style="font-size: 12px; opacity: 0.8;">Note: This code expires in {{ expiry_minutes }} minutes.</span>';
-            
+
             // Setup Sticky Timer
             var expiryMs = Date.now() + ({{ expiry_minutes }} * 60000);
             localStorage.setItem('wheelify_coupon_code', data.code);
@@ -818,7 +817,7 @@
       setTimeout(function() { stickyTimer.classList.add('active'); }, 50);
 
       if (timerInterval) clearInterval(timerInterval);
-      
+
       timerInterval = setInterval(function() {
         var newDiff = parseInt(expiry) - Date.now();
         if (newDiff <= 0) {
@@ -827,7 +826,7 @@
           timerCountdown.textContent = formatTime(newDiff);
         }
       }, 1000);
-      
+
       timerCountdown.textContent = formatTime(diff);
 
       var statusPollInterval = null;
@@ -842,28 +841,28 @@
         formData.append('action', 'check_coupon_status');
         formData.append('code', activeCode);
 
-        fetch('/apps/wheelify', { 
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
-          body: formData 
+        fetch('/apps/wheelify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data && data.used) {
             if (timerInterval) clearInterval(timerInterval);
             if (statusPollInterval) clearInterval(statusPollInterval);
-            
+
             localStorage.removeItem('wheelify_coupon_code');
             localStorage.removeItem('wheelify_coupon_expiry');
             localStorage.removeItem('wheelify_coupon_label');
 
             stickyTimer.innerHTML = '🎉 Order Confirmed! Your coupon <strong>' + activeCode + '</strong> was successfully used.';
-            stickyTimer.style.background = '#005f2c'; 
-            
+            stickyTimer.style.background = '#005f2c';
+
             setTimeout(function() {
               stickyTimer.classList.remove('active');
               setTimeout(function() { stickyTimer.style.display = 'none'; }, 400);
-            }, 5000); 
+            }, 5000);
           }
         })
         .catch(function(err) {
