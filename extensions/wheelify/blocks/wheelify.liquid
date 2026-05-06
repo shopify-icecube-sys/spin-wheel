@@ -497,18 +497,15 @@
           }{%- unless forloop.last -%},{%- endunless -%}
         {%- endfor -%}
       {%- else -%}
-        { label: '10% OFF', gravity: 40, color: '#ff4d6d', type: 'Win' },
-        { label: 'Better luck!', gravity: 30, color: '#f7cad0', type: 'Lose' },
-        { label: '20% OFF', gravity: 20, color: '#ff758f', type: 'Win' },
-        { label: 'Try again!', gravity: 25, color: '#ff99ac', type: 'Lose' },
-        { label: '30% OFF', gravity: 15, color: '#ff85a1', type: 'Win' },
-        { label: 'Almost!', gravity: 20, color: '#ffb3c1', type: 'Lose' },
-        { label: '40% OFF', gravity: 10, color: '#ff99ac', type: 'Win' },
-        { label: 'Next time!', gravity: 15, color: '#ffe5ec', type: 'Lose' },
-        { label: '50% OFF', gravity: 5, color: '#ff4d6d', type: 'Win' },
-        { label: 'So close!', gravity: 10, color: '#f7cad0', type: 'Lose' }
+        { label: '10% OFF', gravity: 35, color: '#ff4d6d', type: 'Win' },
+        { label: '20% OFF', gravity: 25, color: '#ff758f', type: 'Win' },
+        { label: '30% OFF', gravity: 20, color: '#ff85a1', type: 'Win' },
+        { label: '40% OFF', gravity: 15, color: '#ff99ac', type: 'Win' },
+        { label: '50% OFF', gravity: 5, color: '#ff4d6d', type: 'Win' }
       {%- endif -%}
     ];
+
+    // Slices are now fully managed from the Admin Panel
 
     // --- Elements ---
     var trigger = document.getElementById('wheelify-trigger');
@@ -716,8 +713,8 @@
       step2.style.display = 'none';
       resultPanel.style.display = 'block';
 
-      // Robust win check: Any label with a number is treated as a win
-      var isWin = /\d/.test(winner.label);
+      // Robust win check: Check the slice type
+      var isWin = winner.type === 'Win';
 
       // --- Server-side recording & Coupon generation ---
       if (isWin) {
@@ -829,12 +826,19 @@
 
       timerCountdown.textContent = formatTime(diff);
 
-      var statusPollInterval = null;
+      var checkCount = 0;
       function performStatusCheck() {
         var activeCode = localStorage.getItem('wheelify_coupon_code');
         if (!activeCode) {
-          if (statusPollInterval) clearInterval(statusPollInterval);
+          if (window.wheelifyPollInterval) clearInterval(window.wheelifyPollInterval);
           return;
+        }
+
+        checkCount++;
+        // If it's been more than 2 minutes (40 checks at 3s), slow down to 15s to save server
+        if (checkCount === 40) {
+          clearInterval(window.wheelifyPollInterval);
+          window.wheelifyPollInterval = setInterval(performStatusCheck, 15000);
         }
 
         var formData = new URLSearchParams();
@@ -850,7 +854,7 @@
         .then(function(data) {
           if (data && data.used) {
             if (timerInterval) clearInterval(timerInterval);
-            if (statusPollInterval) clearInterval(statusPollInterval);
+            if (window.wheelifyPollInterval) clearInterval(window.wheelifyPollInterval);
 
             localStorage.removeItem('wheelify_coupon_code');
             localStorage.removeItem('wheelify_coupon_expiry');
@@ -870,12 +874,9 @@
         });
       }
 
-      // Initial check and start polling
-      performStatusCheck();
-      statusPollInterval = setInterval(performStatusCheck, 5000);
-
-      // Store in a variable accessible to hideStickyTimer
-      window.wheelifyPollInterval = statusPollInterval;
+      // Start with a fast 3-second interval for immediate feedback
+      window.wheelifyPollInterval = setInterval(performStatusCheck, 3000);
+      performStatusCheck(); // Immediate first check
     }
 
     function hideStickyTimer() {

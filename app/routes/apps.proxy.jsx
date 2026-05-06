@@ -153,20 +153,27 @@ export const action = async ({ request }) => {
             const discountId = findJson.data?.codeDiscountNodes?.nodes[0]?.id;
 
             if (discountId) {
-              const delRes = await admin.graphql(
+              const updateRes = await admin.graphql(
                 `#graphql
-                mutation deleteDiscount($id: ID!) {
-                  discountCodeBasicDelete(id: $id) {
-                    deletedDiscountId
+                mutation expireDiscount($id: ID!, $basicCodeDiscount: DiscountCodeBasicInput!) {
+                  discountCodeBasicUpdate(id: $id, basicCodeDiscount: $basicCodeDiscount) {
+                    codeDiscountNode { id }
                     userErrors { field message }
                   }
                 }
                 `,
-                { variables: { id: discountId } }
+                {
+                  variables: {
+                    id: discountId,
+                    basicCodeDiscount: {
+                      endsAt: new Date(Date.now() - 60000).toISOString() // Expire 1 minute ago
+                    }
+                  }
+                }
               );
-              const delJson = await delRes.json();
-              if (delJson.data?.discountCodeBasicDelete?.deletedDiscountId) {
-                console.log(`Successfully deleted coupon: ${targetCode}`);
+              const updateJson = await updateRes.json();
+              if (updateJson.data?.discountCodeBasicUpdate?.codeDiscountNode?.id) {
+                console.log(`Successfully expired coupon: ${targetCode}`);
                 return true;
               }
             }
@@ -230,8 +237,8 @@ export const action = async ({ request }) => {
         
         return data({ used: hasOrder });
       } catch (err) {
-        console.error("Coupon Proxy Error:", err);
-        return data({ used: false, error: err.message });
+        console.error("Coupon Proxy Error:", err.message || err);
+        return data({ used: false, error: "Something went wrong" });
       }
     }
 

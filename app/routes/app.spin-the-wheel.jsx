@@ -122,16 +122,11 @@ export const action = async ({ request }) => {
 };
 
 const DEFAULT_SLICES = [
-  { type: 'Win', label: '10% OFF', winText: '10% OFF', coupon: '10PERCENT', gravity: '10', color: '#ff4d6d' },
-  { type: 'Lose', label: 'Better luck!', winText: '', coupon: '', gravity: '10', color: '#f7cad0' },
-  { type: 'Win', label: '20% OFF', winText: '20% OFF', coupon: '20PERCENT', gravity: '10', color: '#ff758f' },
-  { type: 'Lose', label: 'Try again!', winText: '', coupon: '', gravity: '10', color: '#ff99ac' },
-  { type: 'Win', label: '30% OFF', winText: '30% OFF', coupon: '30PERCENT', gravity: '10', color: '#ff85a1' },
-  { type: 'Lose', label: 'Almost!', winText: '', coupon: '', gravity: '10', color: '#ffb3c1' },
-  { type: 'Win', label: '40% OFF', winText: '40% OFF', coupon: '40PERCENT', gravity: '10', color: '#ff99ac' },
-  { type: 'Lose', label: 'Next time!', winText: '', coupon: '', gravity: '10', color: '#ffe5ec' },
-  { type: 'Win', label: '50% OFF', winText: '50% OFF', coupon: '50PERCENT', gravity: '10', color: '#ff4d6d' },
-  { type: 'Lose', label: 'So close!', winText: '', coupon: '', gravity: '10', color: '#f7cad0' },
+  { type: 'Win', label: '10% OFF', winText: '10% OFF', coupon: '10PERCENT', gravity: '35', color: '#ff4d6d' },
+  { type: 'Win', label: '20% OFF', winText: '20% OFF', coupon: '20PERCENT', gravity: '25', color: '#ff758f' },
+  { type: 'Win', label: '30% OFF', winText: '30% OFF', coupon: '30PERCENT', gravity: '20', color: '#ff85a1' },
+  { type: 'Win', label: '40% OFF', winText: '40% OFF', coupon: '40PERCENT', gravity: '15', color: '#ff99ac' },
+  { type: 'Win', label: '50% OFF', winText: '50% OFF', coupon: '50PERCENT', gravity: '5', color: '#ff4d6d' },
 ];
 
 export default function SpinTheWheel() {
@@ -140,7 +135,7 @@ export default function SpinTheWheel() {
   const actionData = useActionData();
   const navigation = useNavigation();
 
-  const [slices, setSlices] = useState((savedSlices || DEFAULT_SLICES).slice(0, 10));
+  const [slices, setSlices] = useState(savedSlices || DEFAULT_SLICES);
   const [showToast, setShowToast] = useState(false);
 
   const isSaving = navigation.state === "submitting";
@@ -159,8 +154,23 @@ export default function SpinTheWheel() {
     setSlices(newSlices);
   };
 
+  const handleAddSlice = () => {
+    if (slices.length < 10) {
+      setSlices([...slices, { type: 'Win', label: '10% OFF', winText: '10% OFF', coupon: '10PERCENT', gravity: '10', color: '#ff4d6d' }]);
+    }
+  };
+
+  const handleRemoveSlice = (index) => {
+    if (slices.length > 2) {
+      const newSlices = slices.filter((_, i) => i !== index);
+      setSlices(newSlices);
+    }
+  };
+
   const handleSave = () => {
-    submit({ slices: JSON.stringify(slices) }, { method: "post" });
+    // Ensure all slices are 'Win' before saving
+    const finalSlices = slices.map(s => ({ ...s, type: 'Win' }));
+    submit({ slices: JSON.stringify(finalSlices) }, { method: "post" });
   };
 
   return (
@@ -189,7 +199,7 @@ export default function SpinTheWheel() {
                 <div key={i} style={{ border: '1px solid #e1e3e5', borderRadius: '8px', padding: '16px', display: 'flex', gap: '16px', alignItems: 'flex-start', backgroundColor: '#fff' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '60px' }}>
                     <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>{String(i + 1).padStart(2, '0')}</span>
-                    <span style={{ fontSize: '10px', color: '#999' }}>{slice.type}</span>
+                    <button onClick={() => handleRemoveSlice(i)} style={{ background: 'none', border: 'none', color: '#e74c3c', fontSize: '10px', cursor: 'pointer', marginTop: '4px', textDecoration: 'underline' }}>Remove</button>
                     <span style={{ fontSize: '11px', color: '#27ae60', fontWeight: 'bold', marginTop: '4px' }}>
                       {((parseInt(slice.gravity) || 0) / (slices.reduce((acc, s) => acc + (parseInt(s.gravity) || 0), 0) || 1) * 100).toFixed(1)}%
                     </span>
@@ -206,18 +216,14 @@ export default function SpinTheWheel() {
                       <input type="number" value={slice.gravity} onChange={(e) => handleSliceChange(i, 'gravity', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
                     </div>
 
-                    {i % 2 === 0 ? (
-                      <>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1', minWidth: '120px' }}>
-                          <label style={{ fontSize: '12px' }}>Win text</label>
-                          <input type="text" value={slice.winText} onChange={(e) => handleSliceChange(i, 'winText', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1', minWidth: '120px' }}>
-                          <label style={{ fontSize: '12px' }}>Coupon</label>
-                          <input type="text" value={slice.coupon} onChange={(e) => handleSliceChange(i, 'coupon', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
-                        </div>
-                      </>
-                    ) : null}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1', minWidth: '120px' }}>
+                      <label style={{ fontSize: '12px' }}>Win text</label>
+                      <input type="text" value={slice.winText} onChange={(e) => handleSliceChange(i, 'winText', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1', minWidth: '120px' }}>
+                      <label style={{ fontSize: '12px' }}>Coupon</label>
+                      <input type="text" value={slice.coupon} onChange={(e) => handleSliceChange(i, 'coupon', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
+                    </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100px' }}>
                       <label style={{ fontSize: '12px' }}>Slice color</label>
@@ -229,6 +235,12 @@ export default function SpinTheWheel() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+              <button onClick={handleAddSlice} disabled={slices.length >= 10} style={{ background: '#fff', border: '1px dashed #c9cccf', padding: '12px', borderRadius: '8px', cursor: slices.length >= 10 ? 'not-allowed' : 'pointer', width: '100%', color: '#666', fontWeight: '500' }}>
+                + Add new slice (Max 10)
+              </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', marginTop: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e1e3e5' }}>
