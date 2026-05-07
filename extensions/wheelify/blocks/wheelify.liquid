@@ -506,18 +506,18 @@
           {
             label: {{ slice.label | json }},
             winText: {{ slice.winText | json }},
-            coupon: {{ slice.coupon | json }},
+            discountValue: {{ slice.discountValue | json }},
             gravity: {{ slice.gravity | default: 10 }},
             color: {{ slice.color | default: "#ff4d6d" | json }},
             type: {{ slice.type | default: "Win" | json }}
           }{%- unless forloop.last -%},{%- endunless -%}
         {%- endfor -%}
       {%- else -%}
-        { label: '10% OFF', gravity: 35, color: '#ff4d6d', type: 'Win' },
-        { label: '20% OFF', gravity: 25, color: '#ff758f', type: 'Win' },
-        { label: '30% OFF', gravity: 20, color: '#ff85a1', type: 'Win' },
-        { label: '40% OFF', gravity: 15, color: '#ff99ac', type: 'Win' },
-        { label: '50% OFF', gravity: 5, color: '#ff4d6d', type: 'Win' }
+        { label: '10% OFF', discountValue: '10', gravity: 35, color: '#ff4d6d', type: 'Win' },
+        { label: '20% OFF', discountValue: '20', gravity: 25, color: '#ff758f', type: 'Win' },
+        { label: '30% OFF', discountValue: '30', gravity: 20, color: '#ff85a1', type: 'Win' },
+        { label: '40% OFF', discountValue: '40', gravity: 15, color: '#ff99ac', type: 'Win' },
+        { label: '50% OFF', discountValue: '50', gravity: 5, color: '#ff4d6d', type: 'Win' }
       {%- endif -%}
     ];
 
@@ -747,7 +747,13 @@
       var formData = new URLSearchParams();
       formData.append('action', 'record_lead');
       formData.append('label', winner.label);
-      formData.append('discountValue', winner.discountValue || winner.coupon?.replace(/\D/g, '') || '10');
+      // Priority: 1. winner.discountValue, 2. Regex from label, 3. Default "10"
+      var dv = winner.discountValue;
+      if (!dv && winner.label) {
+        var match = winner.label.match(/(\d+(?:\.\d+)?)/);
+        if (match) dv = match[1];
+      }
+      formData.append('discountValue', dv || '10');
       formData.append('email', userEmail);
       formData.append('customerId', currentCustomerId);
 

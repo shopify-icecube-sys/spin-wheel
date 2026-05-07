@@ -78,41 +78,8 @@ export const action = async ({ request }) => {
       }
     );
 
-    // 3. Generate Discount Codes
-    for (const slice of slices) {
-      if (slice.type === 'Win' && slice.coupon) {
-        const match = slice.label.match(/(\d+)%/);
-        const percentage = match ? parseFloat(match[1]) / 100 : 0.10;
-
-        await admin.graphql(
-          `#graphql
-            mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
-              discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
-                userErrors {
-                  field
-                  message
-                }
-              }
-            }
-          `,
-          {
-            variables: {
-              basicCodeDiscount: {
-                title: slice.coupon,
-                code: slice.coupon,
-                startsAt: new Date().toISOString(),
-                customerSelection: { all: true },
-                appliesOncePerCustomer: true,
-                customerGets: {
-                  value: { percentage: percentage },
-                  items: { all: true }
-                }
-              }
-            }
-          }
-        );
-      }
-    }
+    // Note: Individual discount codes are created per-user at spin time via the proxy.
+    // No pre-creation needed here.
 
     return { success: true };
   } catch (error) {
@@ -122,11 +89,11 @@ export const action = async ({ request }) => {
 };
 
 const DEFAULT_SLICES = [
-  { type: 'Win', label: '10% OFF', winText: '10% OFF', coupon: '10PERCENT', gravity: '35', color: '#ff4d6d' },
-  { type: 'Win', label: '20% OFF', winText: '20% OFF', coupon: '20PERCENT', gravity: '25', color: '#ff758f' },
-  { type: 'Win', label: '30% OFF', winText: '30% OFF', coupon: '30PERCENT', gravity: '20', color: '#ff85a1' },
-  { type: 'Win', label: '40% OFF', winText: '40% OFF', coupon: '40PERCENT', gravity: '15', color: '#ff99ac' },
-  { type: 'Win', label: '50% OFF', winText: '50% OFF', coupon: '50PERCENT', gravity: '5', color: '#ff4d6d' },
+  { type: 'Win', label: '10% OFF', winText: '10% OFF', discountValue: '10', gravity: '35', color: '#ff4d6d' },
+  { type: 'Win', label: '20% OFF', winText: '20% OFF', discountValue: '20', gravity: '25', color: '#ff758f' },
+  { type: 'Win', label: '30% OFF', winText: '30% OFF', discountValue: '30', gravity: '20', color: '#ff85a1' },
+  { type: 'Win', label: '40% OFF', winText: '40% OFF', discountValue: '40', gravity: '15', color: '#ff99ac' },
+  { type: 'Win', label: '50% OFF', winText: '50% OFF', discountValue: '50', gravity: '5', color: '#ff4d6d' },
 ];
 
 export default function SpinTheWheel() {
@@ -135,7 +102,14 @@ export default function SpinTheWheel() {
   const actionData = useActionData();
   const navigation = useNavigation();
 
-  const [slices, setSlices] = useState(savedSlices || DEFAULT_SLICES);
+  const [slices, setSlices] = useState(() => {
+    const raw = savedSlices || DEFAULT_SLICES;
+    // Auto-migrate: populate discountValue from label for old saved configs
+    return raw.map(s => ({
+      ...s,
+      discountValue: s.discountValue || (s.label && s.label.match(/(\d+(?:\.\d+)?)/) ? s.label.match(/(\d+(?:\.\d+)?)/)[1] : '10')
+    }));
+  });
   const [showToast, setShowToast] = useState(false);
   const [error, setError] = useState("");
 
@@ -152,6 +126,16 @@ export default function SpinTheWheel() {
   const handleSliceChange = (index, field, value) => {
     const newSlices = [...slices];
     newSlices[index][field] = value;
+
+    // Auto-sync: when discountValue changes, update label and winText automatically
+    if (field === 'discountValue') {
+      const num = parseFloat(value);
+      if (!isNaN(num) && num > 0) {
+        newSlices[index].label = `${num}% OFF`;
+        newSlices[index].winText = `${num}% OFF`;
+      }
+    }
+
     setSlices(newSlices);
   };
 

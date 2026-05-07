@@ -122,6 +122,7 @@ export const action = async ({ request }) => {
       try {
         const rawExpiry = formData.get("expiryMinutes");
         let expiryMinutes = rawExpiry ? parseInt(rawExpiry) : null;
+        const code = formData.get("code");
 
         // Only fetch settings if expiryMinutes was not passed from frontend
         if (expiryMinutes === null) {
@@ -209,7 +210,6 @@ export const action = async ({ request }) => {
         // --- Action: check_coupon_status ---
         let hasOrder = false;
         if (actionType === "check_coupon_status") {
-          const code = formData.get("code");
           if (!code) return data({ used: false });
 
           // We use order search because it is the most reliable source of truth
@@ -269,79 +269,82 @@ export const action = async ({ request }) => {
 
       if (isWin) {
         const discountValueStr = formData.get("discountValue") || "10";
-        let percentageValue = parseFloat(discountValueStr) / 100;
-        if (isNaN(percentageValue) || percentageValue <= 0) percentageValue = 0.1; // Default to 10% if invalid
-
-        const cleanValue = (percentageValue * 100).toString();
+        let numericValue = parseFloat(discountValueStr);
+        if (isNaN(numericValue) || numericValue <= 0) numericValue = 10;
+        
+        const percentageValue = numericValue / 100;
+        const cleanValue = Math.round(numericValue).toString();
         const uniqueId = Math.random().toString(36).substring(2, 8).toUpperCase();
         finalCode = `${cleanValue}PERCENT-${uniqueId}`;
 
-          const expiryMinutes = parseInt(formData.get("expiryMinutes")) || 0;
-          
-          let effectiveCustomerId = customerId;
-          if (!effectiveCustomerId || !effectiveCustomerId.includes("Customer")) {
-            try {
-              const searchRes = await admin.graphql(
-                `#graphql
-                query($query: String!) {
-                  customers(first: 1, query: $query) {
-                    nodes { id }
-                  }
+        console.log(`Creating discount: ${cleanValue}% OFF → code: ${finalCode}`);
+
+        const expiryMinutes = parseInt(formData.get("expiryMinutes")) || 0;
+        
+        let effectiveCustomerId = customerId;
+        if (!effectiveCustomerId || !effectiveCustomerId.includes("Customer")) {
+          try {
+            const searchRes = await admin.graphql(
+              `#graphql
+              query($query: String!) {
+                customers(first: 1, query: $query) {
+                  nodes { id }
                 }
-                `,
-                { variables: { query: `email:${email}` } }
-              );
-              const searchData = await searchRes.json();
-              effectiveCustomerId = searchData.data?.customers?.nodes[0]?.id;
-            } catch (e) {
-              console.error("Fallback Customer Search Error:", e);
-            }
-          }
-
-          const discountInput = {
-            title: `Spin Win ${finalCode}`,
-            code: finalCode,
-            startsAt: new Date().toISOString(),
-            customerSelection: effectiveCustomerId ? {
-              customers: { add: [effectiveCustomerId] }
-            } : { all: true },
-            appliesOncePerCustomer: true,
-            customerGets: {
-              value: { percentage: percentageValue },
-              items: { all: true }
-            },
-            usageLimit: 1
-          };
-
-          if (expiryMinutes > 0) {
-            const endsAt = new Date(Date.now() + (expiryMinutes * 60 * 1000));
-            discountInput.endsAt = endsAt.toISOString();
-          }
-
-          const response = await admin.graphql(
-            `#graphql
-            mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
-              discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
-                codeDiscountNode { id }
-                userErrors { field message }
               }
-            }
-            `,
-            { variables: { basicCodeDiscount: discountInput } }
-          );
-
-          const result = await response.json();
-          
-          if (result.errors) {
-            console.error("Shopify GraphQL Error:", JSON.stringify(result.errors));
-            return data({ error: result.errors[0].message });
+              `,
+              { variables: { query: `email:${email}` } }
+            );
+            const searchData = await searchRes.json();
+            effectiveCustomerId = searchData.data?.customers?.nodes[0]?.id;
+          } catch (e) {
+            console.error("Fallback Customer Search Error:", e);
           }
-          
-          if (result.data?.discountCodeBasicCreate?.codeDiscountNode) {
-            discountId = result.data.discountCodeBasicCreate.codeDiscountNode.id;
-          } else if (result.data?.discountCodeBasicCreate?.userErrors?.length > 0) {
-            console.error("Shopify Discount User Error:", JSON.stringify(result.data.discountCodeBasicCreate.userErrors));
-            return data({ error: result.data.discountCodeBasicCreate.userErrors[0].message });
+        }
+
+        const discountInput = {
+          title: `Spin Win ${finalCode}`,
+          code: finalCode,
+          startsAt: new Date().toISOString(),
+          customerSelection: effectiveCustomerId ? {
+            customers: { add: [effectiveCustomerId] }
+          } : { all: true },
+          appliesOncePerCustomer: true,
+          customerGets: {
+            value: { percentage: percentageValue },
+            items: { all: true }
+          },
+          usageLimit: 1
+        };
+
+        if (expiryMinutes > 0) {
+          const endsAt = new Date(Date.now() + (expiryMinutes * 60 * 1000));
+          discountInput.endsAt = endsAt.toISOString();
+        }
+
+        const response = await admin.graphql(
+          `#graphql
+          mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+            discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+              codeDiscountNode { id }
+              userErrors { field message }
+            }
+          }
+          `,
+          { variables: { basicCodeDiscount: discountInput } }
+        );
+
+        const result = await response.json();
+        
+        if (result.errors) {
+          console.error("Shopify GraphQL Error:", JSON.stringify(result.errors));
+          return data({ error: result.errors[0].message });
+        }
+        
+        if (result.data?.discountCodeBasicCreate?.codeDiscountNode) {
+          discountId = result.data.discountCodeBasicCreate.codeDiscountNode.id;
+        } else if (result.data?.discountCodeBasicCreate?.userErrors?.length > 0) {
+          console.error("Shopify Discount User Error:", JSON.stringify(result.data.discountCodeBasicCreate.userErrors));
+          return data({ error: result.data.discountCodeBasicCreate.userErrors[0].message });
         }
       }
 
