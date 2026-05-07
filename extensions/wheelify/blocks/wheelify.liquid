@@ -729,6 +729,7 @@
       appliedMsg.style.display = 'none';
 
       var formData = new URLSearchParams();
+      formData.append('action', 'record_lead');
       formData.append('label', winner.label);
       formData.append('email', userEmail);
       formData.append('customerId', currentCustomerId);
@@ -841,6 +842,9 @@
           window.wheelifyPollInterval = setInterval(performStatusCheck, 15000);
         }
 
+        // Only poll if tab is visible
+        if (document.visibilityState !== 'visible') return;
+
         var formData = new URLSearchParams();
         formData.append('action', 'check_coupon_status');
         formData.append('code', activeCode);
@@ -874,8 +878,8 @@
         });
       }
 
-      // Start with a fast 3-second interval for immediate feedback
-      window.wheelifyPollInterval = setInterval(performStatusCheck, 3000);
+      // Start with a 10-second interval to reduce server load
+      window.wheelifyPollInterval = setInterval(performStatusCheck, 10000);
       performStatusCheck(); // Immediate first check
     }
 

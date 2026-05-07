@@ -137,6 +137,7 @@ export default function SpinTheWheel() {
 
   const [slices, setSlices] = useState(savedSlices || DEFAULT_SLICES);
   const [showToast, setShowToast] = useState(false);
+  const [error, setError] = useState("");
 
   const isSaving = navigation.state === "submitting";
 
@@ -168,6 +169,14 @@ export default function SpinTheWheel() {
   };
 
   const handleSave = () => {
+    const totalGravity = slices.reduce((acc, s) => acc + (parseInt(s.gravity) || 0), 0);
+    if (totalGravity !== 100) {
+      setError("Total gravity must be exactly 100% before saving.");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    setError("");
     // Ensure all slices are 'Win' before saving
     const finalSlices = slices.map(s => ({ ...s, type: 'Win' }));
     submit({ slices: JSON.stringify(finalSlices) }, { method: "post" });
@@ -181,6 +190,15 @@ export default function SpinTheWheel() {
             <path fillRule="evenodd" d="M10 20a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm5.707-10.707a1 1 0 0 0-1.414-1.414l-5.293 5.293-2.293-2.293a1 1 0 0 0-1.414 1.414l3 3a1 1 0 0 0 1.414 0l6-6z" />
           </svg>
           Settings and coupons saved successfully!
+        </div>
+      )}
+
+      {error && (
+        <div style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #f5c6cb', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500' }}>
+          <svg viewBox="0 0 20 20" style={{ width: '20px', height: '20px', fill: 'currentColor' }}>
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          {error}
         </div>
       )}
 

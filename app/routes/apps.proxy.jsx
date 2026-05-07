@@ -129,7 +129,7 @@ export const action = async ({ request }) => {
 
         // Helper function to delete a discount by its code
         const deleteDiscountByCode = async (targetCode) => {
-          if (!targetCode) return;
+          if (!targetCode || targetCode === "NONE") return;
           console.log(`Attempting to delete coupon: ${targetCode}`);
           
           // Try multiple search strategies
@@ -243,112 +243,112 @@ export const action = async ({ request }) => {
     }
 
     // --- Action 2: Process Spin Result & Record Lead ---
-    const label = formData.get("label") || "";
-    const customerId = formData.get("customerId");
-    const isWin = formData.get("isWin") === "true";
-    
-    let finalCode = "NONE";
-    let discountId = null;
+    if (actionType === "record_lead" || !actionType) {
+      const label = formData.get("label") || "";
+      const customerId = formData.get("customerId");
+      const isWin = formData.get("isWin") === "true";
+      
+      let finalCode = "NONE";
+      let discountId = null;
 
-    if (isWin) {
-      // EXTREMELY STRICT matching: look for numbers followed by % or OFF or PERCENT
-      const match = label.match(/(\d+)\s*(?:%|PERCENT|OFF)/i);
-      if (!match) {
-        console.log("No valid discount pattern found in label, recording as lead only:", label);
-      } else {
-        const percentageValue = parseFloat(match[1]) / 100;
-        const uniqueId = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const cleanValue = match[1];
-        finalCode = `${cleanValue}PERCENT-${uniqueId}`;
+      if (isWin) {
+        const match = label.match(/(\d+)\s*(?:%|PERCENT|OFF)/i);
+        if (!match) {
+          console.log("No valid discount pattern found in label, recording as lead only:", label);
+        } else {
+          const percentageValue = parseFloat(match[1]) / 100;
+          const uniqueId = Math.random().toString(36).substring(2, 8).toUpperCase();
+          const cleanValue = match[1];
+          finalCode = `${cleanValue}PERCENT-${uniqueId}`;
 
-        const expiryMinutes = parseInt(formData.get("expiryMinutes")) || 0;
-        
-        let effectiveCustomerId = customerId;
-        // Fallback: If customerId is missing or invalid, try to find the customer by email
-        if (!effectiveCustomerId || !effectiveCustomerId.includes("Customer")) {
-          try {
-            const searchRes = await admin.graphql(
-              `#graphql
-              query($query: String!) {
-                customers(first: 1, query: $query) {
-                  nodes { id }
+          const expiryMinutes = parseInt(formData.get("expiryMinutes")) || 0;
+          
+          let effectiveCustomerId = customerId;
+          if (!effectiveCustomerId || !effectiveCustomerId.includes("Customer")) {
+            try {
+              const searchRes = await admin.graphql(
+                `#graphql
+                query($query: String!) {
+                  customers(first: 1, query: $query) {
+                    nodes { id }
+                  }
                 }
-              }
-              `,
-              { variables: { query: `email:${email}` } }
-            );
-            const searchData = await searchRes.json();
-            effectiveCustomerId = searchData.data?.customers?.nodes[0]?.id;
-          } catch (e) {
-            console.error("Fallback Customer Search Error:", e);
-          }
-        }
-
-        const discountInput = {
-          title: `Spin Win ${finalCode}`,
-          code: finalCode,
-          startsAt: new Date().toISOString(),
-          customerSelection: effectiveCustomerId ? {
-            customers: { add: [effectiveCustomerId] }
-          } : { all: true },
-          appliesOncePerCustomer: true,
-          customerGets: {
-            value: { percentage: percentageValue },
-            items: { all: true }
-          },
-          usageLimit: 1
-        };
-
-        if (expiryMinutes > 0) {
-          const endsAt = new Date(Date.now() + (expiryMinutes * 60 * 1000));
-          discountInput.endsAt = endsAt.toISOString();
-        }
-
-        const response = await admin.graphql(
-          `#graphql
-          mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
-            discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
-              codeDiscountNode { id }
-              userErrors { field message }
+                `,
+                { variables: { query: `email:${email}` } }
+              );
+              const searchData = await searchRes.json();
+              effectiveCustomerId = searchData.data?.customers?.nodes[0]?.id;
+            } catch (e) {
+              console.error("Fallback Customer Search Error:", e);
             }
           }
-          `,
-          { variables: { basicCodeDiscount: discountInput } }
-        );
 
-        const result = await response.json();
-        
-        if (result.errors) {
-          console.error("Shopify GraphQL Error:", JSON.stringify(result.errors));
-          return data({ error: result.errors[0].message });
-        }
-        
-        if (result.data?.discountCodeBasicCreate?.codeDiscountNode) {
-          discountId = result.data.discountCodeBasicCreate.codeDiscountNode.id;
-        } else if (result.data?.discountCodeBasicCreate?.userErrors?.length > 0) {
-          console.error("Shopify Discount User Error:", JSON.stringify(result.data.discountCodeBasicCreate.userErrors));
-          return data({ error: result.data.discountCodeBasicCreate.userErrors[0].message });
+          const discountInput = {
+            title: `Spin Win ${finalCode}`,
+            code: finalCode,
+            startsAt: new Date().toISOString(),
+            customerSelection: effectiveCustomerId ? {
+              customers: { add: [effectiveCustomerId] }
+            } : { all: true },
+            appliesOncePerCustomer: true,
+            customerGets: {
+              value: { percentage: percentageValue },
+              items: { all: true }
+            },
+            usageLimit: 1
+          };
+
+          if (expiryMinutes > 0) {
+            const endsAt = new Date(Date.now() + (expiryMinutes * 60 * 1000));
+            discountInput.endsAt = endsAt.toISOString();
+          }
+
+          const response = await admin.graphql(
+            `#graphql
+            mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+              discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+                codeDiscountNode { id }
+                userErrors { field message }
+              }
+            }
+            `,
+            { variables: { basicCodeDiscount: discountInput } }
+          );
+
+          const result = await response.json();
+          
+          if (result.errors) {
+            console.error("Shopify GraphQL Error:", JSON.stringify(result.errors));
+            return data({ error: result.errors[0].message });
+          }
+          
+          if (result.data?.discountCodeBasicCreate?.codeDiscountNode) {
+            discountId = result.data.discountCodeBasicCreate.codeDiscountNode.id;
+          } else if (result.data?.discountCodeBasicCreate?.userErrors?.length > 0) {
+            console.error("Shopify Discount User Error:", JSON.stringify(result.data.discountCodeBasicCreate.userErrors));
+            return data({ error: result.data.discountCodeBasicCreate.userErrors[0].message });
+          }
         }
       }
+
+      try {
+        await db.lead.create({
+          data: {
+            shop: session.shop,
+            email: email,
+            prize: label,
+            couponCode: finalCode
+          }
+        });
+        console.log("Lead successfully recorded for:", email, "Prize:", label);
+      } catch (dbErr) {
+        console.error("Database Save Error:", dbErr);
+      }
+
+      return data({ success: true, code: finalCode === "NONE" ? null : finalCode });
     }
 
-    // --- Action 3: Save to Database (ALWAYS - Win or Loss) ---
-    try {
-      await db.lead.create({
-        data: {
-          shop: session.shop,
-          email: email,
-          prize: label,
-          couponCode: finalCode
-        }
-      });
-      console.log("Lead successfully recorded for:", email, "Prize:", label);
-    } catch (dbErr) {
-      console.error("Database Save Error:", dbErr);
-      // Still return the code to user if we generated one
-    }
-
-    return data({ success: true, code: finalCode === "NONE" ? null : finalCode });
+    return data({ error: "Invalid action type" });
 
   } catch (err) {
     console.error("CRITICAL PROXY ERROR:", err);
