@@ -747,6 +747,7 @@
       var formData = new URLSearchParams();
       formData.append('action', 'record_lead');
       formData.append('label', winner.label);
+      formData.append('discountValue', winner.discountValue || winner.coupon?.replace(/\D/g, '') || '10');
       formData.append('email', userEmail);
       formData.append('customerId', currentCustomerId);
 
@@ -818,7 +819,8 @@
 
       var diff = parseInt(expiry) - Date.now();
       if (diff <= 0) {
-        hideStickyTimer();
+        // One final check to see if it was used before it expired
+        performStatusCheck(true); 
         return;
       }
 
@@ -844,7 +846,10 @@
       timerCountdown.textContent = formatTime(diff);
 
       var checkCount = 0;
-      function performStatusCheck() {
+      var isChecking = false;
+
+      function performStatusCheck(hideIfUnused) {
+        if (isChecking) return;
         var activeCode = localStorage.getItem('wheelify_coupon_code');
         if (!activeCode) {
           if (window.wheelifyPollInterval) clearInterval(window.wheelifyPollInterval);
@@ -852,10 +857,25 @@
         }
 
         checkCount++;
-        // If it's been more than 2 minutes (40 checks at 3s), slow down to 15s to save server
-        if (checkCount === 40) {
-          clearInterval(window.wheelifyPollInterval);
-          window.wheelifyPollInterval = setInterval(performStatusCheck, 15000);
+        
+        // Dynamic Interval: Check faster if close to expiry
+        var timeRemaining = parseInt(localStorage.getItem('wheelify_coupon_expiry')) - Date.now();
+        var nextInterval = 10000; // default 10s
+        
+        // INSTANT CHECK: If we just came from checkout, poll very fast (2s) for the first minute
+        var isFromCheckout = document.referrer.indexOf('/checkouts/') !== -1;
+        
+        if (isFromCheckout && checkCount < 30) {
+          nextInterval = 2000; // 2s
+        } else if (timeRemaining < 30000 && timeRemaining > 0) {
+          nextInterval = 5000; // 5s if less than 30s left
+        } else if (checkCount >= 40) {
+          nextInterval = 20000; // 20s if polled for long time
+        }
+
+        if (window.wheelifyPollInterval) {
+           clearInterval(window.wheelifyPollInterval);
+           window.wheelifyPollInterval = setInterval(performStatusCheck, nextInterval);
         }
 
         // Only poll if tab is visible
@@ -866,6 +886,7 @@
         formData.append('code', activeCode);
         formData.append('expiryMinutes', {{ expiry_minutes | json }});
 
+        isChecking = true;
         fetch('/apps/wheelify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -873,26 +894,37 @@
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
+          isChecking = false;
           if (data && data.used) {
-            if (timerInterval) clearInterval(timerInterval);
-            if (window.wheelifyPollInterval) clearInterval(window.wheelifyPollInterval);
-
-            localStorage.removeItem('wheelify_coupon_code');
-            localStorage.removeItem('wheelify_coupon_expiry');
-            localStorage.removeItem('wheelify_coupon_label');
-
-            stickyTimer.innerHTML = '🎉 Order Confirmed! Your coupon <strong>' + activeCode + '</strong> was successfully used.';
-            stickyTimer.style.background = '#005f2c';
-
-            setTimeout(function() {
-              stickyTimer.classList.remove('active');
-              setTimeout(function() { stickyTimer.style.display = 'none'; }, 400);
-            }, 5000);
+            showSuccess(activeCode);
+          } else if (hideIfUnused) {
+            hideStickyTimer();
           }
         })
         .catch(function(err) {
+          isChecking = false;
           console.error("Timer check failed:", err);
+          if (hideIfUnused) hideStickyTimer();
         });
+      }
+
+      function showSuccess(code) {
+        if (timerInterval) clearInterval(timerInterval);
+        if (window.wheelifyPollInterval) clearInterval(window.wheelifyPollInterval);
+
+        localStorage.removeItem('wheelify_coupon_code');
+        localStorage.removeItem('wheelify_coupon_expiry');
+        localStorage.removeItem('wheelify_coupon_label');
+
+        stickyTimer.innerHTML = '🎉 Order Confirmed! Your coupon <strong>' + code + '</strong> was successfully used.';
+        stickyTimer.style.background = '#005f2c';
+        stickyTimer.style.display = 'flex';
+        setTimeout(function() { stickyTimer.classList.add('active'); }, 50);
+
+        setTimeout(function() {
+          stickyTimer.classList.remove('active');
+          setTimeout(function() { stickyTimer.style.display = 'none'; }, 400);
+        }, 5000);
       }
 
       // Start with a 10-second interval to reduce server load

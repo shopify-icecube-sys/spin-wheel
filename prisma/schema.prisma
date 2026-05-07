@@ -38,6 +38,7 @@ model Lead {
   shop        String
   email       String
   couponCode  String
+  discountId  String?
   prize       String
   createdAt   DateTime @default(now())
 

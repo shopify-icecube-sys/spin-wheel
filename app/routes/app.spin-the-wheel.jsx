@@ -157,7 +157,7 @@ export default function SpinTheWheel() {
 
   const handleAddSlice = () => {
     if (slices.length < 10) {
-      setSlices([...slices, { type: 'Win', label: '10% OFF', winText: '10% OFF', coupon: '10PERCENT', gravity: '10', color: '#ff4d6d' }]);
+      setSlices([...slices, { type: 'Win', label: '10% OFF', winText: '10% OFF', discountValue: '10', gravity: '10', color: '#ff4d6d' }]);
     }
   };
 
@@ -239,8 +239,8 @@ export default function SpinTheWheel() {
                       <input type="text" value={slice.winText} onChange={(e) => handleSliceChange(i, 'winText', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1', minWidth: '120px' }}>
-                      <label style={{ fontSize: '12px' }}>Coupon</label>
-                      <input type="text" value={slice.coupon} onChange={(e) => handleSliceChange(i, 'coupon', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
+                      <label style={{ fontSize: '12px' }}>Discount % (e.g. 70)</label>
+                      <input type="number" value={slice.discountValue || slice.coupon?.replace(/\D/g, '') || '10'} onChange={(e) => handleSliceChange(i, 'discountValue', e.target.value)} style={{ padding: '6px 8px', border: '1px solid #c9cccf', borderRadius: '4px' }} />
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100px' }}>

@@ -206,24 +206,34 @@ export const action = async ({ request }) => {
           return data({ success: true });
         }
 
-        const code = formData.get("code");
-        if (!code) return data({ used: false });
-
         // --- Action: check_coupon_status ---
         let hasOrder = false;
         if (actionType === "check_coupon_status") {
+          const code = formData.get("code");
+          if (!code) return data({ used: false });
+
+          // We use order search because it is the most reliable source of truth
+          // across all Shopify API versions and handles sync delays better.
           const orderRes = await admin.graphql(
             `#graphql
             query checkOrderWithDiscount($query: String!) {
               orders(first: 1, query: $query) {
-                edges { node { id } }
+                nodes { id }
               }
             }
             `,
             { variables: { query: `discount_code:${code}` } }
           );
           const orderJson = await orderRes.json();
-          hasOrder = orderJson.data?.orders?.edges?.length > 0;
+          
+          if (orderJson.errors) {
+            console.error("Order Search Error:", JSON.stringify(orderJson.errors));
+          }
+
+          hasOrder = orderJson.data?.orders?.nodes?.length > 0;
+
+          // If found used, we can return early
+          if (hasOrder) return data({ used: true });
         }
 
         // --- Action: expire_coupon or self-healing check ---
@@ -258,14 +268,13 @@ export const action = async ({ request }) => {
       let discountId = null;
 
       if (isWin) {
-        const match = label.match(/(\d+)\s*(?:%|PERCENT|OFF)/i);
-        if (!match) {
-          console.log("No valid discount pattern found in label, recording as lead only:", label);
-        } else {
-          const percentageValue = parseFloat(match[1]) / 100;
-          const uniqueId = Math.random().toString(36).substring(2, 8).toUpperCase();
-          const cleanValue = match[1];
-          finalCode = `${cleanValue}PERCENT-${uniqueId}`;
+        const discountValueStr = formData.get("discountValue") || "10";
+        let percentageValue = parseFloat(discountValueStr) / 100;
+        if (isNaN(percentageValue) || percentageValue <= 0) percentageValue = 0.1; // Default to 10% if invalid
+
+        const cleanValue = (percentageValue * 100).toString();
+        const uniqueId = Math.random().toString(36).substring(2, 8).toUpperCase();
+        finalCode = `${cleanValue}PERCENT-${uniqueId}`;
 
           const expiryMinutes = parseInt(formData.get("expiryMinutes")) || 0;
           
@@ -333,7 +342,6 @@ export const action = async ({ request }) => {
           } else if (result.data?.discountCodeBasicCreate?.userErrors?.length > 0) {
             console.error("Shopify Discount User Error:", JSON.stringify(result.data.discountCodeBasicCreate.userErrors));
             return data({ error: result.data.discountCodeBasicCreate.userErrors[0].message });
-          }
         }
       }
 
@@ -343,7 +351,8 @@ export const action = async ({ request }) => {
             shop: session.shop,
             email: email,
             prize: label,
-            couponCode: finalCode
+            couponCode: finalCode,
+            discountId: discountId
           }
         });
         console.log("Lead successfully recorded for:", email, "Prize:", label);
