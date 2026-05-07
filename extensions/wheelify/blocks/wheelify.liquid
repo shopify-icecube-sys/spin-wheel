@@ -478,6 +478,22 @@
     font-weight: 700;
   }
   #wheelify-applied-msg { margin-top: 12px; font-size: 16px; color: #27ae60; font-weight: 700; }
+
+  /* Spinner Styles */
+  .wheelify-loader {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: wheelify-spin 0.8s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes wheelify-spin {
+    to { transform: rotate(360deg); }
+  }
 </style>
 
 <script>
@@ -612,7 +628,7 @@
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Processing...';
+      submitBtn.innerHTML = '<span class="wheelify-loader"></span> Processing...';
       errorMsg.style.display = 'none';
 
       var formData = new URLSearchParams();
@@ -848,6 +864,7 @@
         var formData = new URLSearchParams();
         formData.append('action', 'check_coupon_status');
         formData.append('code', activeCode);
+        formData.append('expiryMinutes', {{ expiry_minutes | json }});
 
         fetch('/apps/wheelify', {
           method: 'POST',
@@ -889,6 +906,7 @@
         var formData = new URLSearchParams();
         formData.append('action', 'expire_coupon');
         formData.append('code', code);
+        formData.append('expiryMinutes', {{ expiry_minutes | json }});
         fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData });
       }
 
@@ -921,6 +939,7 @@
       // --- Trigger Background Cleanup only when someone opens the wheel ---
       var cleanupFormData = new URLSearchParams();
       cleanupFormData.append('action', 'cleanup_expired');
+      cleanupFormData.append('expiryMinutes', {{ expiry_minutes | json }});
       fetch('/apps/wheelify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: cleanupFormData })
       .catch(function(err) { console.error("Cleanup trigger failed:", err); });
 

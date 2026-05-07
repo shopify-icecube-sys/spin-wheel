@@ -120,12 +120,18 @@ export const action = async ({ request }) => {
     // --- Action 4: Check Coupon Status ---
     if (actionType === "check_coupon_status" || actionType === "expire_coupon" || actionType === "cleanup_expired") {
       try {
-        const appInstRes = await admin.graphql(`
-          query { currentAppInstallation { metafield(namespace: "wheelify", key: "settings") { value } } }
-        `);
-        const appInstJson = await appInstRes.json();
-        const settings = JSON.parse(appInstJson.data?.currentAppInstallation?.metafield?.value || '{}');
-        const expiryMinutes = settings.couponExpiryMinutes || 60;
+        const rawExpiry = formData.get("expiryMinutes");
+        let expiryMinutes = rawExpiry ? parseInt(rawExpiry) : null;
+
+        // Only fetch settings if expiryMinutes was not passed from frontend
+        if (expiryMinutes === null) {
+          const appInstRes = await admin.graphql(`
+            query { currentAppInstallation { metafield(namespace: "wheelify", key: "settings") { value } } }
+          `);
+          const appInstJson = await appInstRes.json();
+          const settings = JSON.parse(appInstJson.data?.currentAppInstallation?.metafield?.value || '{}');
+          expiryMinutes = settings.couponExpiryMinutes || 60;
+        }
 
         // Helper function to delete a discount by its code
         const deleteDiscountByCode = async (targetCode) => {
