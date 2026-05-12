@@ -154,7 +154,7 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    background: #ff051e;
+    background: #002c44;
     color: #fff;
     display: flex;
     justify-content: center;
@@ -352,13 +352,13 @@
     font-size: 42px;
     font-weight: 800;
     margin: 0 0 16px;
-    color: #000;
+    color: #002c44;
     line-height: 1.1;
   }
 
   #wheelify-subtitle {
     margin: 0 0 32px;
-    color: #555;
+    color: #002c44;
     font-size: 17px;
     line-height: 1.5;
   }
@@ -383,7 +383,7 @@
 
   #wheelify-submit-btn, #wheelify-spin-btn {
     width: 100%;
-    background: #000;
+    background: #002c44;
     color: white;
     border: none;
     padding: 16px 32px;
@@ -399,7 +399,7 @@
 
   #wheelify-disclaimer {
     font-size: 12px;
-    color: #888;
+    color: #002c44;
     margin-top: 24px;
     line-height: 1.4;
   }
@@ -826,7 +826,7 @@
       var diff = parseInt(expiry) - Date.now();
       if (diff <= 0) {
         // One final check to see if it was used before it expired
-        performStatusCheck(true); 
+        performStatusCheck(true);
         return;
       }
 
@@ -863,14 +863,14 @@
         }
 
         checkCount++;
-        
+
         // Dynamic Interval: Check faster if close to expiry
         var timeRemaining = parseInt(localStorage.getItem('wheelify_coupon_expiry')) - Date.now();
         var nextInterval = 10000; // default 10s
-        
+
         // INSTANT CHECK: If we just came from checkout, poll very fast (2s) for the first minute
         var isFromCheckout = document.referrer.indexOf('/checkouts/') !== -1;
-        
+
         if (isFromCheckout && checkCount < 30) {
           nextInterval = 2000; // 2s
         } else if (timeRemaining < 30000 && timeRemaining > 0) {

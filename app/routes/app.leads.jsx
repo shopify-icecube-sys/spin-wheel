@@ -20,11 +20,11 @@ export const loader = async ({ request }) => {
     take: pageSize
   });
 
-  return { 
-    leads, 
-    currentPage: page, 
+  return {
+    leads,
+    currentPage: page,
     totalPages: Math.ceil(totalLeads / pageSize),
-    totalLeads 
+    totalLeads
   };
 };
 
@@ -121,7 +121,7 @@ export default function Leads() {
     <s-page heading="Collected Leads">
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         <p style={{ marginBottom: '24px', color: '#6d7175' }}>
-          Showing {leads.length} of {totalLeads} customers who have spun the wheel.
+          Showing {leads.length} of {totalLeads} customers who have spin the wheel.
         </p>
 
         {leads.length === 0 ? (
@@ -168,7 +168,7 @@ export default function Leads() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderTop: '1px solid #e1e3e5' }}>
               {/* Left Side: Clear All Button */}
               <div>
-                <button 
+                <button
                   onClick={handleClearLeads}
                   style={redBtnStyle}
                   onMouseOver={(e) => e.target.style.backgroundColor = '#d9041a'}
@@ -181,7 +181,7 @@ export default function Leads() {
               {/* Right Side: Pagination Controls */}
               {totalPages > 1 && (
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <button 
+                  <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage <= 1}
                     style={currentPage <= 1 ? disabledBtnStyle : btnStyle}
@@ -191,7 +191,7 @@ export default function Leads() {
                   <span style={{ margin: '0 16px', fontSize: '14px', color: '#6d7175', fontWeight: '500' }}>
                     Page {currentPage} of {totalPages}
                   </span>
-                  <button 
+                  <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage >= totalPages}
                     style={currentPage >= totalPages ? disabledBtnStyle : btnStyle}
@@ -214,13 +214,13 @@ export default function Leads() {
               Do you really want to delete all collected leads? This action cannot be undone and all history will be lost.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button 
+              <button
                 onClick={() => setShowConfirm(false)}
                 style={{ padding: '10px 20px', border: '1px solid #e1e3e5', borderRadius: '8px', backgroundColor: '#fff', cursor: 'pointer', fontWeight: '600' }}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={confirmDelete}
                 style={{ padding: '10px 20px', border: 'none', borderRadius: '8px', backgroundColor: '#ff051e', color: '#fff', cursor: 'pointer', fontWeight: '600' }}
               >
