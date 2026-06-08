@@ -352,6 +352,7 @@ export const action = async ({ request }) => {
             code: finalCode,
             startsAt: new Date().toISOString(),
             functionId,
+            discountClasses: ["ORDER"],
             appliesOncePerCustomer: true,
             usageLimit: 1,
             customerSelection: effectiveCustomerId ? {
@@ -369,6 +370,7 @@ export const action = async ({ request }) => {
           if (expiryMinutes > 0) {
             discountInput.endsAt = new Date(Date.now() + (expiryMinutes * 60 * 1000)).toISOString();
           }
+
         } else {
           // --- FALLBACK: Basic Discount (if function not found) ---
           console.warn("discount-validator function not found, falling back to Basic discount.");

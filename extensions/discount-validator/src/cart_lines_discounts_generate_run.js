@@ -1,5 +1,4 @@
 import {
-  DiscountClass,
   OrderDiscountSelectionStrategy,
 } from '../generated/api';
 
@@ -24,19 +23,11 @@ export function cartLinesDiscountsGenerateRun(input) {
     return { operations: [] };
   }
 
-  const hasOrderDiscountClass = input.discount.discountClasses.includes(
-    DiscountClass.Order,
-  );
-
-  if (!hasOrderDiscountClass) {
-    return { operations: [] };
-  }
-
   // --- Blocked SKU Check ---
   // If ANY cart line has a blocked SKU, return no discount at all
   const hasBlockedSku = input.cart.lines.some(line => {
     const sku = (line.merchandise?.sku || '').toLowerCase().trim();
-    return BLOCKED_SKUS.some(blocked => sku === blocked.toLowerCase());
+    return BLOCKED_SKUS.map(s => s.toLowerCase().trim()).includes(sku);
   });
 
   if (hasBlockedSku) {
