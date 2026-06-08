@@ -293,11 +293,12 @@ export const action = async ({ request }) => {
         let numericValue = parseFloat(discountValueStr);
         if (isNaN(numericValue) || numericValue <= 0) numericValue = 10;
 
+        const percentageValue = numericValue / 100;
         const cleanValue = Math.round(numericValue).toString();
         const uniqueId = Math.random().toString(36).substring(2, 8).toUpperCase();
         finalCode = `${cleanValue}PERCENT-${uniqueId}`;
 
-        console.log(`Creating App discount: ${cleanValue}% OFF → code: ${finalCode}`);
+        console.log(`Creating discount: ${cleanValue}% OFF → code: ${finalCode}`);
 
         const expiryMinutes = parseInt(formData.get("expiryMinutes")) || 0;
 
@@ -321,7 +322,7 @@ export const action = async ({ request }) => {
           }
         }
 
-        // --- Fetch the Shopify Function ID for discount-validator ---
+        // --- Fetch the deployed Shopify Function ID ---
         let functionId = null;
         try {
           const fnRes = await admin.graphql(`
@@ -340,49 +341,80 @@ export const action = async ({ request }) => {
           console.error("Function ID fetch error:", fnErr);
         }
 
-        if (!functionId) {
-          console.error("discount-validator function not found. Make sure the app is deployed.");
-          return data({ error: "Discount function not configured. Please contact support." });
-        }
+        let discountInput;
+        let usesAppDiscount = false;
 
-        // Build App Discount input
-        // Note: percentage & blocked SKU logic lives inside the Shopify Function (discount-validator)
-        const discountInput = {
-          title: `Spin Win ${finalCode}`,
-          code: finalCode,
-          startsAt: new Date().toISOString(),
-          functionId,
-          appliesOncePerCustomer: true,
-          usageLimit: 1,
-          customerSelection: effectiveCustomerId ? {
-            customers: { add: [effectiveCustomerId] }
-          } : { all: true },
-          // Store discount percentage in metafield so the Function can read it at checkout
-          metafields: [
-            {
-              namespace: "wheelify",
-              key: "percentage",
-              value: numericValue.toString(),
-              type: "number_decimal"
-            }
-          ]
-        };
-
-        if (expiryMinutes > 0) {
-          discountInput.endsAt = new Date(Date.now() + (expiryMinutes * 60 * 1000)).toISOString();
-        }
-
-        const response = await admin.graphql(
-          `#graphql
-          mutation discountCodeAppCreate($discount: DiscountCodeAppInput!) {
-            discountCodeAppCreate(discount: $discount) {
-              codeAppDiscount { discountId }
-              userErrors { field message }
-            }
+        if (functionId) {
+          // --- NEW: App Discount (with blocked SKU validation via Shopify Function) ---
+          usesAppDiscount = true;
+          discountInput = {
+            title: `Spin Win ${finalCode}`,
+            code: finalCode,
+            startsAt: new Date().toISOString(),
+            functionId,
+            appliesOncePerCustomer: true,
+            usageLimit: 1,
+            customerSelection: effectiveCustomerId ? {
+              customers: { add: [effectiveCustomerId] }
+            } : { all: true },
+            metafields: [
+              {
+                namespace: "wheelify",
+                key: "percentage",
+                value: numericValue.toString(),
+                type: "number_decimal"
+              }
+            ]
+          };
+          if (expiryMinutes > 0) {
+            discountInput.endsAt = new Date(Date.now() + (expiryMinutes * 60 * 1000)).toISOString();
           }
-          `,
-          { variables: { discount: discountInput } }
-        );
+        } else {
+          // --- FALLBACK: Basic Discount (if function not found) ---
+          console.warn("discount-validator function not found, falling back to Basic discount.");
+          discountInput = {
+            title: `Spin Win ${finalCode}`,
+            code: finalCode,
+            startsAt: new Date().toISOString(),
+            customerSelection: effectiveCustomerId ? {
+              customers: { add: [effectiveCustomerId] }
+            } : { all: true },
+            appliesOncePerCustomer: true,
+            customerGets: {
+              value: { percentage: percentageValue },
+              items: { all: true }
+            },
+            usageLimit: 1
+          };
+          if (expiryMinutes > 0) {
+            const endsAt = new Date(Date.now() + (expiryMinutes * 60 * 1000));
+            discountInput.endsAt = endsAt.toISOString();
+          }
+        }
+
+        const response = usesAppDiscount
+          ? await admin.graphql(
+              `#graphql
+              mutation discountCodeAppCreate($discount: DiscountCodeAppInput!) {
+                discountCodeAppCreate(discount: $discount) {
+                  codeAppDiscount { discountId }
+                  userErrors { field message }
+                }
+              }
+              `,
+              { variables: { discount: discountInput } }
+            )
+          : await admin.graphql(
+              `#graphql
+              mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+                discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+                  codeDiscountNode { id }
+                  userErrors { field message }
+                }
+              }
+              `,
+              { variables: { basicCodeDiscount: discountInput } }
+            );
 
         const result = await response.json();
 
@@ -391,11 +423,20 @@ export const action = async ({ request }) => {
           return data({ error: result.errors[0].message });
         }
 
-        if (result.data?.discountCodeAppCreate?.codeAppDiscount) {
-          discountId = result.data.discountCodeAppCreate.codeAppDiscount.discountId;
-        } else if (result.data?.discountCodeAppCreate?.userErrors?.length > 0) {
-          console.error("Shopify Discount User Error:", JSON.stringify(result.data.discountCodeAppCreate.userErrors));
-          return data({ error: result.data.discountCodeAppCreate.userErrors[0].message });
+        if (usesAppDiscount) {
+          if (result.data?.discountCodeAppCreate?.codeAppDiscount) {
+            discountId = result.data.discountCodeAppCreate.codeAppDiscount.discountId;
+          } else if (result.data?.discountCodeAppCreate?.userErrors?.length > 0) {
+            console.error("Shopify Discount User Error:", JSON.stringify(result.data.discountCodeAppCreate.userErrors));
+            return data({ error: result.data.discountCodeAppCreate.userErrors[0].message });
+          }
+        } else {
+          if (result.data?.discountCodeBasicCreate?.codeDiscountNode) {
+            discountId = result.data.discountCodeBasicCreate.codeDiscountNode.id;
+          } else if (result.data?.discountCodeBasicCreate?.userErrors?.length > 0) {
+            console.error("Shopify Discount User Error:", JSON.stringify(result.data.discountCodeBasicCreate.userErrors));
+            return data({ error: result.data.discountCodeBasicCreate.userErrors[0].message });
+          }
         }
       }
 
