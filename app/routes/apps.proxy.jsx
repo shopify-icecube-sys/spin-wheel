@@ -162,9 +162,9 @@ export const action = async ({ request }) => {
             if (discountId) {
               const updateRes = await admin.graphql(
                 `#graphql
-                mutation expireDiscount($id: ID!, $basicCodeDiscount: DiscountCodeBasicInput!) {
-                  discountCodeBasicUpdate(id: $id, basicCodeDiscount: $basicCodeDiscount) {
-                    codeDiscountNode { id }
+                mutation expireDiscount($id: ID!, $codeAppDiscount: DiscountCodeAppInput!) {
+                  discountCodeAppUpdate(id: $id, codeAppDiscount: $codeAppDiscount) {
+                    codeAppDiscount { discountId }
                     userErrors { field message }
                   }
                 }
@@ -172,14 +172,14 @@ export const action = async ({ request }) => {
                 {
                   variables: {
                     id: discountId,
-                    basicCodeDiscount: {
+                    codeAppDiscount: {
                       endsAt: new Date(Date.now() - 60000).toISOString() // Expire 1 minute ago
                     }
                   }
                 }
               );
               const updateJson = await updateRes.json();
-              if (updateJson.data?.discountCodeBasicUpdate?.codeDiscountNode?.id) {
+              if (updateJson.data?.discountCodeAppUpdate?.codeAppDiscount?.discountId) {
                 console.log(`Successfully expired coupon: ${targetCode}`);
                 return true;
               }
@@ -301,52 +301,79 @@ export const action = async ({ request }) => {
           }
         }
 
-        const discountInput = {
-          title: `Spin Win ${finalCode}`,
-          code: finalCode,
-          startsAt: new Date().toISOString(),
-          customerSelection: effectiveCustomerId ? {
-            customers: { add: [effectiveCustomerId] }
-          } : { all: true },
-          appliesOncePerCustomer: true,
-          customerGets: {
-            value: { percentage: percentageValue },
-            items: { all: true }
-          },
-          usageLimit: 1
-        };
-
-        if (expiryMinutes > 0) {
-          const endsAt = new Date(Date.now() + (expiryMinutes * 60 * 1000));
-          discountInput.endsAt = endsAt.toISOString();
-        }
-
-        const response = await admin.graphql(
+      let functionId = null;
+      try {
+        const fnRes = await admin.graphql(
           `#graphql
-          mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
-            discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
-              codeDiscountNode { id }
-              userErrors { field message }
+          query {
+            shopifyFunctions(first: 50) {
+              nodes { id title apiType }
             }
-          }
-          `,
-          { variables: { basicCodeDiscount: discountInput } }
+          }`
         );
-
-        const result = await response.json();
-
-        if (result.errors) {
-          console.error("Shopify GraphQL Error:", JSON.stringify(result.errors));
-          return data({ error: result.errors[0].message });
-        }
-
-        if (result.data?.discountCodeBasicCreate?.codeDiscountNode) {
-          discountId = result.data.discountCodeBasicCreate.codeDiscountNode.id;
-        } else if (result.data?.discountCodeBasicCreate?.userErrors?.length > 0) {
-          console.error("Shopify Discount User Error:", JSON.stringify(result.data.discountCodeBasicCreate.userErrors));
-          return data({ error: result.data.discountCodeBasicCreate.userErrors[0].message });
-        }
+        const fnJson = await fnRes.json();
+        const fnNodes = fnJson.data?.shopifyFunctions?.nodes || [];
+        functionId = fnNodes.find((n) => n.apiType === "discount")?.id;
+      } catch (e) {
+        console.error("Function lookup error:", e);
       }
+
+      if (!functionId) {
+        return data({ error: "Discount function not found. Please deploy the app first." });
+      }
+
+      const discountInput = {
+        title: `Spin Win ${finalCode}`,
+        code: finalCode,
+        functionId: functionId,
+        startsAt: new Date().toISOString(),
+        discountClasses: ["ORDER"],
+        customerSelection: effectiveCustomerId
+          ? { customers: { add: [effectiveCustomerId] } }
+          : { all: true },
+        appliesOncePerCustomer: true,
+        usageLimit: 1,
+        metafields: [
+          {
+            namespace: "wheelify",
+            key: "percentage",
+            type: "number_decimal",
+            value: cleanValue, // e.g. "20"
+          },
+        ],
+      };
+
+      if (expiryMinutes > 0) {
+        const endsAt = new Date(Date.now() + (expiryMinutes * 60 * 1000));
+        discountInput.endsAt = endsAt.toISOString();
+      }
+
+      const response = await admin.graphql(
+        `#graphql
+        mutation discountCodeAppCreate($codeAppDiscount: DiscountCodeAppInput!) {
+          discountCodeAppCreate(codeAppDiscount: $codeAppDiscount) {
+            codeAppDiscount { discountId }
+            userErrors { field message }
+          }
+        }
+        `,
+        { variables: { codeAppDiscount: discountInput } }
+      );
+
+      const result = await response.json();
+
+      if (result.errors) {
+        console.error("Shopify GraphQL Error:", JSON.stringify(result.errors));
+        return data({ error: result.errors[0].message });
+      }
+
+      if (result.data?.discountCodeAppCreate?.codeAppDiscount) {
+        discountId = result.data.discountCodeAppCreate.codeAppDiscount.discountId;
+      } else if (result.data?.discountCodeAppCreate?.userErrors?.length > 0) {
+        console.error("Shopify Discount User Error:", JSON.stringify(result.data.discountCodeAppCreate.userErrors));
+        return data({ error: result.data.discountCodeAppCreate.userErrors[0].message });
+      }
+    }
 
       try {
         await db.lead.create({
