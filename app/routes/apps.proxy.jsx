@@ -301,6 +301,24 @@ export const action = async ({ request }) => {
           }
         }
 
+        let eligibleCollectionId = null;
+        try {
+          const colRes = await admin.graphql(
+            `#graphql
+            query($query: String!) {
+              collections(first: 1, query: $query) {
+                nodes { id }
+              }
+            }
+            `,
+            { variables: { query: "handle:discount-eligible" } }
+          );
+          const colJson = await colRes.json();
+          eligibleCollectionId = colJson.data?.collections?.nodes[0]?.id;
+        } catch (e) {
+          console.error("Collection lookup error:", e);
+        }
+
         const discountInput = {
           title: `Spin Win ${finalCode}`,
           code: finalCode,
@@ -311,8 +329,11 @@ export const action = async ({ request }) => {
           appliesOncePerCustomer: true,
           customerGets: {
             value: { percentage: percentageValue },
-            items: { all: true }
+            items: eligibleCollectionId
+              ? { collections: { add: [eligibleCollectionId] } }
+              : { all: true }
           },
+
           usageLimit: 1
         };
 
